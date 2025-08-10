@@ -19,7 +19,7 @@ body.idle #wrap {
   position: fixed;
   inset: 0;
   display: grid;
-  place-items: center
+  place-items: center;
   text-align: center;
   pointer-events: none;
   padding: 24px;
