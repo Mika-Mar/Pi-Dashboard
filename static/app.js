@@ -17,8 +17,6 @@ const eqEl  = document.getElementById('eq');
 const clockEl = document.getElementById('clock');
 
 
-
-
 function nowMs() { return performance.now(); }
 // Beispiel: wenn du aus der Spotify API die Cover-URL hast:
 function setCover(url){
@@ -157,7 +155,7 @@ function setEqPaletteVisible([r,g,b]){
 
   // Helle Farbe => dunkle Outline, dunkle Farbe => helle Outline
   const stroke = (L > 0.55) ? 'rgba(0,0,0,.65)' : 'rgba(255,255,255,.85)';
-  eqEl.style.setProperty('--bar-dim', stroke);
+  eqEl.style.setProperty('--bar-stroke', stroke);
 }
 
 
