@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spotify Dashboard</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div id="bg"></div>
+<div id="bgOverlay"></div>
+  <main id="wrap">
+    <div id="coverWrap">
+      <img id="cover" alt="Album Cover" />
+    </div>
+
+    <div id="meta">
+  <div id="titleRow">
+    <div id="eq">
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </div>
+    <div id="title">–</div>
+  </div>
+  <div id="artist">–</div>
+</div>
+
+
+
+    <div id="progress">
+      <div id="barBg"><div id="bar"></div></div>
+      <div id="times">
+        <span id="tNow">0:00</span>
+        <span id="tDur">0:00</span>
+      </div>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
