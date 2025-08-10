@@ -21,17 +21,63 @@ const eqEl  = document.getElementById('eq');
 const clockEl = document.getElementById('clock');
 
 
-let idleTimer;
-function checkIdleMode(isPlaying) {
+const IDLE_DELAY_MS = 10_000;  // nach 10s Pause Idle
+let idleTimer = null;
+let idleActive = false;
+
+function setIdle(active){
+  if (active === idleActive) return;
+  idleActive = active;
+  document.body.classList.toggle('idle', active);
+  // aria-hidden für Screenreader:
+  const is = document.getElementById('idleScreen');
+  if (is) is.setAttribute('aria-hidden', active ? 'false' : 'true');
+}
+
+function armIdle(){
   clearTimeout(idleTimer);
-  if (!isPlaying) {
-    idleTimer = setTimeout(() => {
-      document.body.classList.add("idle");
-    }, 10000); // nach 10s Pause Idle Mode
+  idleTimer = setTimeout(() => setIdle(true), IDLE_DELAY_MS);
+}
+function disarmIdle(){
+  clearTimeout(idleTimer);
+  setIdle(false);
+}
+
+/** Call this mit dem aktuellen isPlaying-Status aus deiner API */
+function updateIdleFromApi(isPlaying){
+  if (isPlaying) {
+    disarmIdle();
   } else {
-    document.body.classList.remove("idle");
+    // nichts läuft → Idle armeren (zündet nach Delay)
+    armIdle();
   }
 }
+
+// Große Uhr + Datum (Europe/Berlin)
+(function startIdleClock(){
+  const elClock = document.getElementById('idleClock');
+  const elDate  = document.getElementById('idleDate');
+  if (!elClock || !elDate) return;
+
+  const fmtTime = new Intl.DateTimeFormat('de-DE', {
+    hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Europe/Berlin'
+  });
+  const fmtDate = new Intl.DateTimeFormat('de-DE', {
+    weekday:'long', day:'2-digit', month:'long', year:'numeric', timeZone:'Europe/Berlin'
+  });
+
+  function tick(){
+    const now = new Date();
+    elClock.textContent = fmtTime.format(now);
+    elDate.textContent  = fmtDate.format(now);
+    const drift = 1000 - (Date.now() % 1000);
+    setTimeout(tick, drift);
+  }
+  tick();
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+})();
+
 
 document.body.classList.add('loading');
 
@@ -280,7 +326,7 @@ async function checkPlaybackState() {
       if (!playing) {
         // Sofort pixelgenau einfrieren
         pauseProgressCSS(durationMs, progress);
-	checkIdleMode(playing);
+        updateIdleFromApi(playing)
       } else {
         // Sofort an richtiger Stelle weiterlaufen
         startProgressCSS(durationMs, progress);
