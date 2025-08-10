@@ -13,10 +13,24 @@ const barEl      = document.getElementById('bar');
 const $ = sel => document.querySelector(sel);
 
 const cover = document.getElementById('cover');
+cover.addEventListener('load', () => {
+  coverReady = true;
+  maybeDoneLoading();
+});
 const eqEl  = document.getElementById('eq');
 const clockEl = document.getElementById('clock');
 
 
+document.body.classList.add('loading');
+
+let firstDataLoaded = false;
+let coverReady = false;
+
+function maybeDoneLoading(){
+  if (firstDataLoaded && coverReady) {
+    document.body.classList.remove('loading');
+  }
+}
 
 
 function nowMs() { return performance.now(); }
@@ -279,6 +293,7 @@ async function fetchCurrent() {
     const uiIsPlaying = (lastKnownPlaying !== null) ? lastKnownPlaying : !!data.is_playing;
     setEqPlaying(uiIsPlaying);
 
+
     const newKey = `${data.name}__${data.artist}`;
     const trackChanged = newKey !== trackKey;
 
@@ -306,7 +321,14 @@ async function fetchCurrent() {
         bgEl.style.backgroundImage = `url("${data.album_image}?t=${Date.now()}")`;
       }
       // Früh exit: Rest macht Play/Pause unten
+      if (!firstDataLoaded) {
+      firstDataLoaded = true;
+      maybeDoneLoading();
     }
+    }
+    setTimeout(() => {
+  if (firstDataLoaded) document.body.classList.remove('loading');
+    }, 2000);
 
     if (!uiIsPlaying) {
       // Pausiert: fix auf exakten Wert
