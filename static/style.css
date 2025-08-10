@@ -232,3 +232,78 @@ html, body {
   transform-origin: top center;
 }*/
 
+/* === Skeleton-Base + Shimmer === */
+:root{
+  --skel: rgba(255,255,255,.08);
+  --skel-2: rgba(255,255,255,.18);
+}
+
+.skeleton{
+  position: relative;
+  overflow: hidden;
+  background: var(--skel);
+  border-radius: 8px;
+}
+.skeleton::after{
+  content:"";
+  position:absolute; inset:0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-2), transparent);
+  animation: skel 1.2s infinite;
+}
+@keyframes skel { to { transform: translateX(100%); } }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .skeleton::after{ animation: none; }
+}
+
+/* === Deine Spots im UI === */
+
+/* Große Uhr (falls #heroClock vorhanden) */
+body.loading #clock{
+  color: transparent; text-shadow: none;
+  height: clamp(42px, 10vw, 120px);
+}
+body.loading #clock.skeleton{ border-radius: 12px; }
+
+/* CoverWrap: Overlay-Skeleton über dem Bild (kein HTML-Change nötig) */
+#coverWrap{ position: relative; }
+body.loading #coverWrap::before{
+  content:""; position:absolute; inset:0; border-radius:24px;
+  background: var(--skel);
+}
+body.loading #coverWrap::after{
+  content:""; position:absolute; inset:0; border-radius:24px;
+  background: linear-gradient(90deg, transparent, var(--skel-2), transparent);
+  animation: skel 1.2s infinite;
+}
+
+/* Titel & Artist als Balken */
+body.loading #title{ color: transparent; }
+body.loading #artist{ color: transparent; }
+body.loading #title.skeleton,
+body.loading #artist.skeleton{
+  display:inline-block;
+  width: 80%;
+  height: 1.1em;
+  border-radius: 6px;
+}
+
+/* Progress: Hintergrund schimmert, Zeiten sind ausgeblendet */
+body.loading #barBg{
+  position: relative;
+  background: var(--skel);
+}
+body.loading #barBg::after{
+  content:""; position:absolute; inset:0; border-radius:999px;
+  background: linear-gradient(90deg, transparent, var(--skel-2), transparent);
+  animation: skel 1.2s infinite;
+}
+body.loading #times span{ color: transparent; }
+
+/* Optional weiches Ausblenden, wenn loading endet */
+#wrap{ transition: opacity .25s ease; }
+body.loading #wrap{ opacity:.92; }
+
+
