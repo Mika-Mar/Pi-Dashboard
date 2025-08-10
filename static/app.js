@@ -333,6 +333,9 @@ async function checkPlaybackState() {
     const data = await res.json();
     const playing = !!data.is_playing;
 
+    // NEU: Idle-Logik immer füttern (nicht nur bei Statuswechsel!)
+    updateIdleFromApi(playing);
+
     if (playing !== lastKnownPlaying) {
       lastKnownPlaying = playing;
       setEqPlaying(playing);
@@ -340,11 +343,8 @@ async function checkPlaybackState() {
       const progress = typeof data.progress_ms === 'number' ? data.progress_ms : 0;
 
       if (!playing) {
-        // Sofort pixelgenau einfrieren
         pauseProgressCSS(durationMs, progress);
-        updateIdleFromApi(playing)
       } else {
-        // Sofort an richtiger Stelle weiterlaufen
         startProgressCSS(durationMs, progress);
       }
     }
@@ -365,9 +365,14 @@ async function fetchCurrent() {
     const data = await res.json();
     if (!data.authorized) { window.location.href = '/login'; return; }
 
+    // NEU: Idle-Entscheidung hier ebenfalls füttern
+    // Wenn du NUR im echten Leerlauf idlen willst, nimm die zweite Zeile (shouldIdle).
+    updateIdleFromApi(!!data.is_playing);
+    // const shouldIdle = !data.is_playing && (data.progress_ms === 0);
+    // updateIdleFromApi(!shouldIdle); // true = aktiv, false = idle-kandidat
+
     const uiIsPlaying = (lastKnownPlaying !== null) ? lastKnownPlaying : !!data.is_playing;
     setEqPlaying(uiIsPlaying);
-
 
     const newKey = `${data.name}__${data.artist}`;
     const trackChanged = newKey !== trackKey;
