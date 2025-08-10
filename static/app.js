@@ -21,6 +21,18 @@ const eqEl  = document.getElementById('eq');
 const clockEl = document.getElementById('clock');
 
 
+let idleTimer;
+function checkIdleMode(isPlaying) {
+  clearTimeout(idleTimer);
+  if (!isPlaying) {
+    idleTimer = setTimeout(() => {
+      document.body.classList.add("idle");
+    }, 10000); // nach 10s Pause Idle Mode
+  } else {
+    document.body.classList.remove("idle");
+  }
+}
+
 document.body.classList.add('loading');
 
 let firstDataLoaded = false;
@@ -268,6 +280,7 @@ async function checkPlaybackState() {
       if (!playing) {
         // Sofort pixelgenau einfrieren
         pauseProgressCSS(durationMs, progress);
+	checkIdleMode(playing);
       } else {
         // Sofort an richtiger Stelle weiterlaufen
         startProgressCSS(durationMs, progress);
