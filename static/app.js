@@ -21,35 +21,51 @@ const eqEl  = document.getElementById('eq');
 const clockEl = document.getElementById('clock');
 
 
-const IDLE_DELAY_MS = 10_000;  // nach 10s Pause Idle
-let idleTimer = null;
+// ===== Idle Mode (robust gegen Polls) =====
+const IDLE_DELAY_MS = 10_000;
 let idleActive = false;
+let idleTimer = null;
+let lastPlayState = null;     // null | true | false
+let pausedSinceTs = 0;
 
 function setIdle(active){
   if (active === idleActive) return;
   idleActive = active;
   document.body.classList.toggle('idle', active);
-  // aria-hidden für Screenreader:
   const is = document.getElementById('idleScreen');
   if (is) is.setAttribute('aria-hidden', active ? 'false' : 'true');
 }
 
-function armIdle(){
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => setIdle(true), IDLE_DELAY_MS);
+function scheduleIdle() {
+  if (idleTimer) return;                      // schon geplant → nicht neu planen
+  const remaining = Math.max(0, IDLE_DELAY_MS - (Date.now() - pausedSinceTs));
+  idleTimer = setTimeout(() => { idleTimer = null; setIdle(true); }, remaining);
 }
-function disarmIdle(){
-  clearTimeout(idleTimer);
+
+function cancelIdle() {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   setIdle(false);
 }
 
-/** Call this mit dem aktuellen isPlaying-Status aus deiner API */
-function updateIdleFromApi(isPlaying){
+/** Nur bei Statuswechsel reagieren (kein dauerndes Neu-Setzen) */
+function updateIdleFromApi(isPlaying) {
+  if (lastPlayState === null) {
+    // Initial
+    lastPlayState = isPlaying;
+    if (!isPlaying) { pausedSinceTs = Date.now(); scheduleIdle(); }
+    return;
+  }
+  if (isPlaying === lastPlayState) {
+    // Keine Änderung → nichts tun (Timer weiterlaufen lassen)
+    return;
+  }
+  // Statuswechsel:
+  lastPlayState = isPlaying;
   if (isPlaying) {
-    disarmIdle();
+    cancelIdle();                               // Musik startet → Idle aus
   } else {
-    // nichts läuft → Idle armeren (zündet nach Delay)
-    armIdle();
+    pausedSinceTs = Date.now();                 // pausiert → Idle neu planen
+    scheduleIdle();
   }
 }
 
