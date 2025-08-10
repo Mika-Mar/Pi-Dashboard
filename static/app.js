@@ -14,6 +14,9 @@ const $ = sel => document.querySelector(sel);
 
 const cover = document.getElementById('cover');
 const eqEl  = document.getElementById('eq');
+const clockEl = document.getElementById('clock');
+
+
 
 
 function nowMs() { return performance.now(); }
@@ -24,8 +27,8 @@ function setCover(url){
 }
 
 const bar = document.getElementById('bar');
-const tNow = document.getElementById('tNow');
-const tDur = document.getElementById('tDur');
+const tNowEl = document.getElementById('tNow');
+const tDurEl = document.getElementById('tDur');
 
 // Helper: sofort ohne Animation setzen
 function snapBar(ratio) {
@@ -44,8 +47,13 @@ cover.addEventListener('load', async () => {
     // leicht boost für Sättigung/Helligkeit
     const boosted = boostColor(rgb, {sat: 1.15, light: 1.05});
     const [r,g,b] = boosted;
-    eqEl.style.setProperty('--bar', `rgb(${r}, ${g}, ${b})`);
-    eqEl.style.setProperty('--bar-dim', `rgba(${r}, ${g}, ${b}, 0.35)`);
+    /*eqEl.style.setProperty('--bar', `rgb(${r}, ${g}, ${b})`);
+    eqEl.style.setProperty('--bar-dim', `rgba(${r}, ${g}, ${b}, 0.35)`);*/
+    setEqPaletteVisible(boosted)
+    /*clockEl.style.setProperty('--bar',`rgb(${r}, ${g}, ${b})`);
+    const stroke = (L > 0.55) ? 'rgba(0,0,0,.65)' : 'rgba(255,255,255,.85)';
+    clockEl.style.setProperty('--bar-stroke', stroke);*/
+    //bar.style.setProperty('--text', `rgb(${r}, ${g}, ${b})`)
   } catch (e) {
     console.warn('Color extraction failed:', e);
   }
@@ -134,6 +142,25 @@ function hslToRgb(h,s,l){
   return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
 }
 
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+function setEqPaletteVisible([r,g,b]){
+  // Basisfarbe (hast du eh schon aus dem Cover):
+  eqEl.style.setProperty('--bar', `rgb(${r}, ${g}, ${b})`);
+  eqEl.style.setProperty('--bar-glow', `rgba(${r}, ${g}, ${b}, 0.35)`);
+
+  // Luminanz -> wähle helle ODER dunkle Outline automatisch
+  const srgb = [r,g,b].map(v=>v/255);
+  const toLin = c => c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+  const [R,G,B] = srgb.map(toLin);
+  const L = 0.2126*R + 0.7152*G + 0.0722*B;
+
+  // Helle Farbe => dunkle Outline, dunkle Farbe => helle Outline
+  const stroke = (L > 0.55) ? 'rgba(0,0,0,.65)' : 'rgba(255,255,255,.85)';
+  eqEl.style.setProperty('--bar-dim', stroke);
+}
+
+
 function msToTime(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(s / 60);
@@ -165,36 +192,49 @@ function startProgressCSS(duration, progress) {
   progressEl.style.setProperty('--dur', `${duration}ms`);
   progressEl.style.setProperty('--neg-progress', `${-progress}ms`);
 
-  // Animation sicher neustarten
   barEl.style.animation = 'none';
-  // Reflow erzwingen
   void barEl.offsetWidth;
   barEl.style.animation = '';
 
-  // Zeitlabel-Basis setzen
   playStartWall = Date.now() - progress;
 
-  // Labels
-  if (tDur) tDur.textContent = msToTime(duration);
+  if (tDurEl) tDurEl.textContent = msToTime(duration);
+  if (tNowEl) tNowEl.textContent = msToTime(progress); // <- sofort anzeigen
 }
+
 
 /** Friert bei Pause auf exakter Position ein (ohne „Nachlauf“) */
-function pauseProgressCSS(duration, progress) {
-  if (!progressEl) return;
-  const ratio = duration > 0 ? Math.max(0, Math.min(1, progress / duration)) : 0;
-  progressEl.style.setProperty('--ratio', String(ratio));
-  progressEl.classList.add('paused');
+function pauseProgressCSS(duration, progressFromAPI) {
+  if (!progressEl || !barEl) return;
 
-  // Zeitlabel auf exakten Stand setzen
-  if (tNow) tNow.textContent = msToTime(progress);
+  // 1) aktuellen visuellen Fortschritt auslesen (scaleX aus matrix(...))
+  let ratioFromVisual = null;
+  const tr = getComputedStyle(barEl).transform; // z.B. "matrix(0.42, 0, 0, 1, 0, 0)"
+  if (tr && tr !== 'none' && tr.startsWith('matrix(')) {
+    const parts = tr.slice(7, -1).split(',');
+    const a = parseFloat(parts[0]); // scaleX
+    if (Number.isFinite(a)) ratioFromVisual = Math.max(0, Math.min(1, a));
+  }
+
+  // 2) Fallback über Zeitbasis (falls transform nicht lesbar)
+  const playedNow = Math.min(Date.now() - playStartWall, duration || 0);
+  const apiMs     = typeof progressFromAPI === 'number' ? progressFromAPI : 0;
+
+  // Nimm die "neuere" Quelle, damit es nie rückwärts springt
+  const freezeMs = Math.max(apiMs, playedNow);
+  let ratio = ratioFromVisual != null
+    ? ratioFromVisual
+    : (duration > 0 ? Math.max(0, Math.min(1, freezeMs / duration)) : 0);
+
+  // 3) zuerst den Zielstand setzen, dann pausieren -> kein Zucken
+  progressEl.style.setProperty('--ratio', ratio.toFixed(6));
+  progressEl.classList.add('paused');    // schaltet animation: none; transform: scaleX(var(--ratio))
+
+  // 4) Zeit-Label passend einfrieren
+  const ms = Math.round(ratio * (duration || 0));
+  if (tNowEl) tNowEl.textContent = msToTime(ms);
 }
 
-/** Optionale Aktualisierung des Zeitlabels ohne rAF (alle 250ms) */
-setInterval(() => {
-  if (!progressEl || progressEl.classList.contains('paused') || durationMs <= 0) return;
-  const played = Math.min(Date.now() - playStartWall, durationMs);
-  if (tNow) tNow.textContent = msToTime(played);
-}, 250);
 
 
 
@@ -288,6 +328,29 @@ fetchCurrent();
 checkPlaybackState();
 setInterval(fetchCurrent, 1000);   // Track/Meta
 setInterval(checkPlaybackState, 150); // schnelles Play/Pause
+(function startClock(){
+  const el = document.getElementById('clock');
+  if (!el) return;
+
+  const fmt = new Intl.DateTimeFormat('de-DE', {
+    hour: '2-digit', minute: '2-digit',
+    hour12: false, timeZone: 'Europe/Berlin'
+  });
+
+  function tick(){
+    el.textContent = fmt.format(new Date());
+    // zum nächsten vollen Sekundentick ausrichten:
+    const drift = 1000 - (Date.now() % 1000);
+    setTimeout(tick, drift);
+  }
+
+  tick();
+
+  // Beim Tab-Wechsel neu syncen, damit es nicht „nachhinkt“
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+})();
 
 
 // --- Animation bleibt wie gehabt: nutzt currentMs/lastUpdate/isPlaying ---
