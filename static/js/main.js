@@ -20,23 +20,18 @@ document.addEventListener("DOMContentLoaded", ()=> {
     setInterval(tick, 1000);
 
     // System-Kachel (CPU/RAM/Temperatur)
-    const systInterval = initSystem({
+    initSystem({
         cpuEl: el("cpu"),
         ramEl: el("ram"),
         tempEl: el("temp"),
-        containerEl: el("sysDash"),
         pollMs: 6000,
     });
 
-    //Swipe Carousel zum wechseln der Dashboards
+    // Swipe-Carousel zum Wechseln der Dashboards
     const dots = Array.from(document.querySelectorAll("#pager .dot"));
     const carousel = initSwipe({
         wrapEl: el("dashWrap"),
         dots,
-        onChange: (i) => {
-    if (i === 1) systInterval.start();    // Slide 1 = System
-    else         systInterval.stop();
-  }
     });
 
     //spotify player:
