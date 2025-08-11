@@ -195,16 +195,20 @@ body{
 }
 #bgOverlay, #bgOverlay::before { z-index: 0; }
 #wrap { position: relative; z-index: 1; }
-#sysTile { position: relative; z-index: 2; color: var()white; }
+#sysTile {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+}
 
-#sysTile, #sysTile span {
-  color: #fff !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  mix-blend-mode: normal !important;
-  filter: none !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,.25); /* nur für Kontrast */
-  font-size: 16px;                         /* falls irgendwo 0 gesetzt wurde */
+#sysTile span {
+  color: #fff;
+  opacity: 1;
+  visibility: visible;
+  mix-blend-mode: normal;
+  filter: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  font-size: 16px;
 }
 
 :root{
