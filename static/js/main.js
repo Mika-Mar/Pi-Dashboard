@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", ()=> {
         cpuEl: el("cpu"),
         ramEl: el("ram"),
         tempEl: el("temp"),
+        containerEl: el("sysDash"),
+        pollMs: 6000,
     });
 
     //Swipe Carousel zum wechseln der Dashboards
@@ -31,6 +33,10 @@ document.addEventListener("DOMContentLoaded", ()=> {
     const carousel = initSwipe({
         wrapEl: el("dashWrap"),
         dots,
+        onChange: (i) => {
+    if (i === 1) systInterval.start();    // Slide 1 = System
+    else         systInterval.stop();
+  }
     });
 
     //spotify player:
@@ -62,9 +68,9 @@ document.addEventListener("DOMContentLoaded", ()=> {
     // aufräumen bei verstecken der Seiten:
     document.addEventListener("visibilitychange", () => {
         if(document.hidden) {
-            clearInterval(systInterval);
+
         }else{
-            initSystem();
+
         }
     })
 })

@@ -52,7 +52,18 @@ export function initPlayer({
     const elapsed = Date.now() - playStartWall;
     return Math.min(durationMs, elapsed);
   }
-
+  function setEqPaused(paused){
+  // Klassen toggeln
+    eqTopEl?.classList.toggle("paused", paused);
+    eqTextEl?.classList.toggle("paused", paused);
+    // Fallback direkt auf die Bars (falls CSS überschrieben wird)
+    [eqTopEl, eqTextEl].forEach(root=>{
+      if(!root) return;
+      root.querySelectorAll("span").forEach(s=>{
+        s.style.animationPlayState = paused ? "paused" : "running";
+      });
+   });
+  }
   // ---- Render ----
   function render() {
     const cur = wallProgressMs();
@@ -63,8 +74,7 @@ export function initPlayer({
     if (timeNowEl)   timeNowEl.textContent = fmtTime(cur);
     if (timeTotalEl) timeTotalEl.textContent = fmtTime(durationMs);
     if (btnPlayEl) btnPlayEl.classList.toggle("is-playing", !!isPlaying);
-      eqTopEl.classList.toggle("paused", !isPlaying);
-      eqTextEl.classList.toggle("paused", !isPlaying);
+      setEqPaused(!isPlaying);
   }
 
   // Smooth UI zwischen Polls
@@ -125,7 +135,7 @@ export function initPlayer({
 
     lastServerAt = Date.now();
     if (isPlaying) playStartWall = lastServerAt - progressMs;
-
+    setEqPaused(!isPlaying);
     if (switched) {
       setTrackUI({
         name: t.name,
