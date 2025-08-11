@@ -2,51 +2,100 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Spotify Dashboard</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pi Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div id="bg"></div>
-<div id="bgOverlay"></div>
-<div id="idleScreen" aria-hidden="true">
-  <div id="idleClock">--:--</div>
-  <div id="idleDate">–</div>
-</div>
+  <!-- Hintergrund -->
+  <div id="bg"></div>
+  <div id="bgOverlay"></div>
 
   <main id="wrap">
-    <div>
-  <time id="clock" aria-live="polite">--:--</time>
-</div>
-    <div id="coverWrap">
-      <img id="cover" alt="Album Cover" />
-    </div>
-
-    <div id="meta">
-  <div id="titleRow">
-    <div id="eq">
-      <span class="bar"></span>
-      <span class="bar"></span>
-      <span class="bar"></span>
-    </div>
-    <div id="title">–</div>
-  </div>
-  <div id="artist">–</div>
-</div>
-
-
-
-    <div id="progress">
-      <div id="barBg"><div id="bar"></div></div>
-      <div id="times">
-        <span id="tNow">0:00</span>
-        <span id="tDur">0:00</span>
+    <!-- Top-Bar -->
+    <header id="top">
+      <div id="eq-top" class="eq" aria-hidden="true">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        <span class="bar"></span><span class="bar"></span>
       </div>
+      <div id="titleBlock">
+        <div id="titleText">—</div>
+        <div id="artistText" class="muted">—</div>
+      </div>
+      <div id="clock" aria-label="Uhr">00:00</div>
+    </header>
+
+    <!-- Pager-Dots -->
+    <nav id="pager" aria-label="Seiten">
+      <button class="dot" aria-label="Now Playing"></button>
+      <button class="dot" aria-label="System"></button>
+      <button class="dot" aria-label="Pi-hole"></button>
+      <button class="dot" aria-label="Wetter"></button>
+    </nav>
+
+    <!-- Swipe-Container mit 4 Seiten -->
+    <div id="dashWrap" aria-roledescription="carousel">
+      <!-- Slide 0: Now Playing -->
+      <section class="dash" id="dash-now">
+        <div id="player">
+          <div id="coverWrap">
+            <img id="cover" crossOrigin="anonymous" alt="Albumcover" />
+          </div>
+
+          <div id="meta">
+            <div id="albumText" class="muted"> </div>
+            <div id="eq-text" class="eq">
+            <span></span>
+            <span></span>
+            <span></span>
+            </div>
+            <div id="progress" role="slider" aria-label="Track-Fortschritt" aria-valuemin="0" aria-valuemax="100">
+              <div id="progressFill" class="fill"></div>
+            </div>
+            <div id="times">
+              <span id="timeNow">0:00</span>
+              <span id="timeTotal">0:00</span>
+            </div>
+
+            <div id="controls" role="group" aria-label="Player-Steuerung">
+              <button id="btnPrev" aria-label="Vorheriger Track">⏮</button>
+              <button id="btnPlay" aria-label="Play/Pause">⏯</button>
+              <button id="btnNext" aria-label="Nächster Track">⏭</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 1: System -->
+      <section class="dash" id="sysDash">
+        <div class="tiles">
+          <div class="tile" id="sysTile">
+            ⏱️ <span id="cpu">—%</span> • 🧠 <span id="ram">—%</span> • 🌡️ <span id="temp">—°C</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 2: Pi-hole -->
+      <section class="dash" id="piDash">
+        <div class="tiles">
+          <div class="tile" id="piTile" style="display:none;">
+            🚫 <span id="blocked">0</span> • 🌐 <span id="dns">0</span> • <span id="ratio">0.0</span>%
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 3: Wetter -->
+      <section class="dash" id="wxDash">
+        <div class="tiles">
+          <div class="tile" id="wxTile" style="display:none;">
+            ⛅ <span id="city">—</span> <span id="t">—</span>° — <span id="d">—</span>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <!-- Dein Modul-Einstieg -->
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
