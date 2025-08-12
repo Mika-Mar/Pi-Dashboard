@@ -194,11 +194,19 @@ body{
   box-shadow: 0 6px 20px rgba(0,0,0,.25);
 }
 
-#bg, #bgOverlay, #bgOverlay::before { z-index: -1; }
-#wrap { position: relative; z-index: 1; }
+#bg,
+#bgOverlay,
+#bgOverlay::before {
+  z-index: 0;          /* background base */
+}
+
+#wrap,
 #sysDash {
   position: relative;
-  z-index: 1;
+  z-index: 10;         /* content above background */
+}
+
+#sysDash {
   display: flex;
   justify-content: center;
   align-items: center;
