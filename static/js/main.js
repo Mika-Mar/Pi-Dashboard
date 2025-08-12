@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", ()=> {
         cpuEl: el("cpu"),
         ramEl: el("ram"),
         tempEl: el("temp"),
+        containerEl: el("sysDash"),
         pollMs: 6000,
     });
 
