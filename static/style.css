@@ -34,6 +34,7 @@ body{
   max-width: 1024px;
   margin: 0 auto;
   padding: 10px 14px 18px;
+  overflow: hidden; /* hide off-screen slides to prevent bleed on wide screens */
 }
 
 /* ===== Top-Bar ===== */
@@ -65,7 +66,7 @@ body{
   display:flex; overflow:hidden; touch-action: pan-y;
   will-change: transform;
 }
-.dash{ min-width:100%; padding: 8px; }
+.dash{ flex:0 0 100%; padding: 8px; }
 .swipe-anim{ transition: transform .32s ease-out; }
 
 /* ===== Player ===== */
