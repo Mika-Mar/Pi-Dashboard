@@ -33,13 +33,14 @@ body{
   position: relative;
   max-width: 1024px;
   margin: 0 auto;
-  padding: 10px 14px 18px;
+  padding: 10px 0 18px; /* remove side padding so slides fill the wrap */
+  overflow: hidden; /* hide off-screen slides to prevent bleed on wide screens */
 }
 
 /* ===== Top-Bar ===== */
 #top{
   display:grid; grid-template-columns: 1fr auto 1fr; align-items:center;
-  gap: 8px; margin: 4px 0 8px;
+  gap: 8px; margin: 4px 0 8px; padding: 0 14px;
 }
 
 #titleBlock{ text-align:center; }
@@ -51,7 +52,7 @@ body{
 #pager{
   --accent: white;
   --on-accent: accent;
-  display:flex; gap:.35rem; justify-content:center; margin:.35rem 0 .6rem; }
+  display:flex; gap:.35rem; justify-content:center; margin:.35rem 0 .6rem; padding: 0 14px; }
 #pager .dot{
   width:8px; height:8px; border-radius:999px; opacity:.45; border:0;
   background:var(--accent); padding:0; cursor:pointer;
@@ -64,8 +65,9 @@ body{
 #dashWrap{
   display:flex; overflow:hidden; touch-action: pan-y;
   will-change: transform;
+  position: relative; /* allow slides to layer above one another */
 }
-.dash{ min-width:100%; padding: 8px; }
+.dash{ flex:0 0 100%; padding: 8px; }
 .swipe-anim{ transition: transform .32s ease-out; }
 
 /* ===== Player ===== */
@@ -210,6 +212,7 @@ body{
   display: flex;
   justify-content: center;
   align-items: center;
+  background: var(--bg); /* ensure system slide text isn't obscured */
 }
 
 #sysCenter {
