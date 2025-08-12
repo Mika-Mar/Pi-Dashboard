@@ -34,6 +34,7 @@ body{
   max-width: 1024px;
   margin: 0 auto;
   padding: 10px 0 18px; /* remove side padding so slides fill the wrap */
+  
   overflow: hidden; /* hide off-screen slides to prevent bleed on wide screens */
 }
 
