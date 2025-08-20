@@ -3,7 +3,7 @@ export function initSwipe({ wrapEl, dots, onChange }) {
   const slides = Array.from(wrapEl.children);
   let idx = 0, start = 0, vX = 0, lastX = 0, lastT = 0, drag = false;
   // width of a single slide (wrapEl is the combined width of all slides)
-  const w = () => wrapEl.clientWidth / slides.length, THRESH = 0.18, MAXV = 2;
+  const w = () => slides[0]?.clientWidth || wrapEl.clientWidth, THRESH = 0.18, MAXV = 2;
 
   const setX = (px, animate) => {
     wrapEl.classList.toggle("swipe-anim", !!animate);

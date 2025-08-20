@@ -258,6 +258,8 @@ body{
   opacity: .9;
   transition: opacity .35s ease, filter .35s ease, transform .35s ease;
   will-change: transform, filter, opacity;
+  pointer-events: none;                /* allow underlying interfaces to remain clickable */
+
 }
 
 /* Zoom-Animation beim Trackwechsel */

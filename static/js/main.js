@@ -19,14 +19,7 @@ document.addEventListener("DOMContentLoaded", ()=> {
     tick();
     setInterval(tick, 1000);
 
-    // System-Kachel (CPU/RAM/Temperatur)
-    initSystem({
-        cpuEl: el("cpu"),
-        ramEl: el("ram"),
-        tempEl: el("temp"),
-        containerEl: el("sysDash"),
-        pollMs: 6000,
-    });
+
 
     // Swipe-Carousel zum Wechseln der Dashboards
     const dots = Array.from(document.querySelectorAll("#pager .dot"));
@@ -56,6 +49,14 @@ document.addEventListener("DOMContentLoaded", ()=> {
     });
     //Debug: window.Player = player;
 
+    // System-Kachel (CPU/RAM/Temperatur)
+    initSystem({
+        cpuEl: el("cpu"),
+        ramEl: el("ram"),
+        tempEl: el("temp"),
+        containerEl: el("sysDash"),
+        pollMs: 6000,
+    });
 
 
     // hier weitere Module einfügen:
