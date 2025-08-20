@@ -1,5 +1,5 @@
 // gestures.js
-export function initSwipe({ wrapEl, dots, onChange }) {
+export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
   const slides = Array.from(wrapEl.children);
   let idx = 0, start = 0, vX = 0, lastX = 0, lastT = 0, drag = false;
   // width of a single slide (wrapEl is the combined width of all slides)
@@ -78,6 +78,6 @@ export function initSwipe({ wrapEl, dots, onChange }) {
   }
 
   // Start
-  snap(0, false);
+  snap(startIndex, false);
   return { next: () => snap(idx + 1), prev: () => snap(idx - 1), go: (i) => snap(i) };
 }
