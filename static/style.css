@@ -64,12 +64,17 @@ body{
 
 /* ===== Carousel ===== */
 #dashWrap{
-  display:flex; overflow:hidden; touch-action: pan-y;
-  will-change: transform;
+  overflow:hidden;
+  touch-action: pan-y;
   position: relative; /* allow slides to layer above one another */
+  display: flex;
+  transition: transform .4s ease;
 }
-.dash{ flex:0 0 100%; padding: 8px; }
-.swipe-anim{ transition: transform .32s ease-out; }
+.dash{
+  width:100%;
+  padding: 8px;
+  flex: 0 0 100%;
+}
 
 /* ===== Player ===== */
 .eq {
