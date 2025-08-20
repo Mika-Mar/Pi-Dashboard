@@ -1,9 +1,9 @@
 // static/js/system.js
 import { jget } from "./api.js";
 
-export function initSystem({ cpuEl, ramEl, tempEl, containerEl, rootEl = null, pollMs = 6000 }) {
+export function initSystem({ cpuEl, ramEl, tempEl, pollMs = 6000 }) {
   let intId = null;
-  let visible = true;
+  let visible = false;
 
   // Sanfte Writer mit Checks (verhindert NaN-Anzeigen)
   const setCPU  = (v) => { if (Number.isFinite(v) && cpuEl)  cpuEl.textContent  = Math.round(v) + "%"; };
@@ -34,22 +34,6 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, rootEl = null, p
     if (intId) clearInterval(intId);
     intId = null;
   }
-
-  // Optional: Sichtbarkeit via Viewport (funktioniert auch mit transform)
-  if (containerEl && typeof window !== "undefined" && "IntersectionObserver" in window) {
-    const io = new IntersectionObserver(
-      (entries) => {
-        const e = entries[0];
-        const isVis = e.isIntersecting;
-        isVis ? start() : stop();
-      },
-      { root: rootEl, threshold: [0, 0.1, 1] }
-    );
-    io.observe(containerEl);
-  }
-
-  // Ensure initial values are populated
-  start();
 
   return { start, stop, refresh };
 }
