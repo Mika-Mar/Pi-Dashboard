@@ -1,94 +1,57 @@
 // gestures.js
+// Simple carousel that toggles between full-width pages.
 export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
   const slides = Array.from(wrapEl.children);
-  let idx = 0, start = 0, vX = 0, lastX = 0, lastT = 0, drag = false;
-  // width of a single slide (wrapEl is the combined width of all slides)
-  // width of a single slide. Use nullish coalescing so a measured width of 0
-  // does not incorrectly fall back to the container width.
-  const w = () => slides[0]?.clientWidth ?? wrapEl.clientWidth, THRESH = 0.18, MAXV = 2;
+  let idx = startIndex;
+  const THRESH = 50;
 
-  const setX = (px, animate) => {
-    wrapEl.classList.toggle("swipe-anim", !!animate);
-    wrapEl.style.transform = `translate3d(${px}px,0,0)`;
-  };
-
-  const snap = (i, animate = true) => {
+  // Show a specific slide and hide the others
+  const show = (i) => {
     idx = Math.max(0, Math.min(i, slides.length - 1));
-    setX(-idx * w(), animate);
+    slides.forEach((s, j) => {
+      s.classList.toggle("active", j === idx);
+    });
 
-    // Dots-UI aktualisieren
+    // reset any residual scroll so the active slide is centered
+    wrapEl.scrollLeft = 0;
+
     if (dots?.length) {
       dots.forEach((d, j) => d.classList.toggle("active", j === idx));
     }
 
-    // Callback immer nachziehen
     if (typeof onChange === "function") onChange(idx);
   };
 
-  // Touch handling
+  // Basic swipe handling – detect horizontal swipe on release
+  let startX = 0, dragging = false;
   wrapEl.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    drag = true;
-    wrapEl.classList.remove("swipe-anim");
-    start = lastX = e.touches[0].clientX;
-    lastT = performance.now();
-    vX = 0;
+    dragging = true;
+    startX = e.touches[0].clientX;
   }, { passive: true });
 
-  wrapEl.addEventListener("touchmove", e => {
-    if (!drag) return;
-    const cur = e.touches[0].clientX;
-    const dx = cur - start;
-    const atS = idx === 0 && dx > 0;
-    const atE = idx === slides.length - 1 && dx < 0;
-    setX(-idx * w() + dx * ((atS || atE) ? 0.35 : 1), false);
-
-    const t = performance.now();
-    const dt = Math.max(1, t - lastT);
-    vX = ((cur - lastX) / dt) * 16;
-    lastX = cur; lastT = t;
+  wrapEl.addEventListener("touchend", e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > THRESH) show(idx + (dx < 0 ? 1 : -1));
   }, { passive: true });
 
-  wrapEl.addEventListener("touchend", () => {
-    if (!drag) return;
-    drag = false;
-
-    // aktuelle X-Position robust auslesen
-    let curX = 0;
-    const tf = wrapEl.style.transform; // "translate3d(123px,0,0)"
-    if (tf && tf.startsWith("translate3d(")) {
-      const n = parseFloat(tf.slice(12)); // pickt die 123
-      if (!Number.isNaN(n)) curX = n;
-    }
-
-    const dx = curX + idx * w();
-    const far = Math.abs(dx) > w() * THRESH;
-    const fast = Math.abs(vX) > MAXV;
-    if (far || fast) snap(dx < 0 ? idx + 1 : idx - 1);
-    else snap(idx);
-  });
-
-  // Resize -> Position beibehalten
-  window.addEventListener("resize", () => snap(idx, false));
-
-  // Dots-Klicks EINMAL binden
+  // Bind dot navigation
   if (dots?.length) {
-    dots.forEach((d, i) => d.addEventListener("click", (e) => {
+    dots.forEach((d, i) => d.addEventListener("click", e => {
       e.preventDefault(); e.stopPropagation();
-      snap(i);
+      show(i);
     }));
   }
 
-  // Start: ensure layout is ready so w() returns a proper value. If the width
-  // is 0 (e.g. CSS not yet applied), defer snapping to the next animation
-  // frame until a non-zero width is available.
-  const init = () => {
-    if (w() === 0) {
-      requestAnimationFrame(init);
-    } else {
-      snap(startIndex, false);
-    }
+  // Initial display
+  show(startIndex);
+
+  return {
+    next: () => show(idx + 1),
+    prev: () => show(idx - 1),
+    go: (i) => show(i)
   };
-  init();
-  return { next: () => snap(idx + 1), prev: () => snap(idx - 1), go: (i) => snap(i) };
 }
+

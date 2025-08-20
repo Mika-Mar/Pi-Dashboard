@@ -64,12 +64,18 @@ body{
 
 /* ===== Carousel ===== */
 #dashWrap{
-  display:flex; overflow:hidden; touch-action: pan-y;
-  will-change: transform;
+  overflow:hidden;
+  touch-action: pan-y;
   position: relative; /* allow slides to layer above one another */
 }
-.dash{ flex:0 0 100%; padding: 8px; }
-.swipe-anim{ transition: transform .32s ease-out; }
+.dash{
+  display:none;
+  width:100%;
+  padding: 8px;
+}
+.dash.active{
+  display:block;
+}
 
 /* ===== Player ===== */
 .eq {
@@ -210,10 +216,13 @@ body{
 }
 
 #sysDash {
-  display: flex;
   justify-content: center;
   align-items: center;
   background: var(--bg); /* ensure system slide text isn't obscured */
+}
+
+#sysDash.active {
+  display: flex;
 }
 
 #sysCenter {
