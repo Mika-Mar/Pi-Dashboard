@@ -17,6 +17,8 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 })
 
   if (Number.isFinite(s.cpu_pct) && cpuEl) cpuEl.textContent = Math.round(s.cpu_pct) + "%";
   if (Number.isFinite(s.ram_pct) && ramEl) ramEl.textContent = Math.round(s.ram_pct) + "%";
+  setRAM(s.ram_pct);
+  setCPU(s.cpu_pct);
 
   if (tempEl) {
     if (Number.isFinite(s.temp_c)) tempEl.textContent = s.temp_c.toFixed(1) + "°C";
