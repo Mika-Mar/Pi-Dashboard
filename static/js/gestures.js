@@ -3,7 +3,9 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
   const slides = Array.from(wrapEl.children);
   let idx = 0, start = 0, vX = 0, lastX = 0, lastT = 0, drag = false;
   // width of a single slide (wrapEl is the combined width of all slides)
-  const w = () => slides[0]?.clientWidth || wrapEl.clientWidth, THRESH = 0.18, MAXV = 2;
+  // width of a single slide. Use nullish coalescing so a measured width of 0
+  // does not incorrectly fall back to the container width.
+  const w = () => slides[0]?.clientWidth ?? wrapEl.clientWidth, THRESH = 0.18, MAXV = 2;
 
   const setX = (px, animate) => {
     wrapEl.classList.toggle("swipe-anim", !!animate);
@@ -77,7 +79,16 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     }));
   }
 
-  // Start
-  snap(startIndex, false);
+  // Start: ensure layout is ready so w() returns a proper value. If the width
+  // is 0 (e.g. CSS not yet applied), defer snapping to the next animation
+  // frame until a non-zero width is available.
+  const init = () => {
+    if (w() === 0) {
+      requestAnimationFrame(init);
+    } else {
+      snap(startIndex, false);
+    }
+  };
+  init();
   return { next: () => snap(idx + 1), prev: () => snap(idx - 1), go: (i) => snap(i) };
 }

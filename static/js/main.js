@@ -1,8 +1,8 @@
 
 
 import { initSystem } from "./system.js";
-import { initSwipe} from "./gestures.js";
-import {initPlayer} from "./player.js";
+import { initSwipe } from "./gestures.js";
+import { initPlayer } from "./player.js";
 //hier später noch die anderen
 
 document.addEventListener("DOMContentLoaded", ()=> {
@@ -21,12 +21,24 @@ document.addEventListener("DOMContentLoaded", ()=> {
 
 
 
+    // System-Kachel (CPU/RAM/Temperatur)
+    const system = initSystem({
+        cpuEl: el("cpu"),
+        ramEl: el("ram"),
+        tempEl: el("temp"),
+        pollMs: 6000,
+    });
+
     // Swipe-Carousel zum Wechseln der Dashboards
     const dots = Array.from(document.querySelectorAll("#pager .dot"));
     const carousel = initSwipe({
         wrapEl: el("dashWrap"),
         dots,
         startIndex: 1,
+        onChange: (i) => {
+            if (i === 1) system.start();
+            else system.stop();
+        },
     });
 
     //spotify player:
@@ -49,16 +61,6 @@ document.addEventListener("DOMContentLoaded", ()=> {
         pollMs: 1000,
     });
     //Debug: window.Player = player;
-
-    // System-Kachel (CPU/RAM/Temperatur)
-    initSystem({
-        cpuEl: el("cpu"),
-        ramEl: el("ram"),
-        tempEl: el("temp"),
-        containerEl: el("sysDash"),
-        rootEl: el("wrap"),
-        pollMs: 6000,
-    });
 
 
     // hier weitere Module einfügen:
