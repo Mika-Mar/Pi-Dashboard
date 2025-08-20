@@ -1,9 +1,9 @@
 // static/js/system.js
 import { jget } from "./api.js";
 
-export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 }) {
+export function initSystem({ cpuEl, ramEl, tempEl, containerEl, rootEl = null, pollMs = 6000 }) {
   let intId = null;
-  let visible = true; // falls du keinen IO nutzt
+  let visible = true;
 
   // Sanfte Writer mit Checks (verhindert NaN-Anzeigen)
   const setCPU  = (v) => { if (Number.isFinite(v) && cpuEl)  cpuEl.textContent  = Math.round(v) + "%"; };
@@ -15,15 +15,9 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 })
       if (!visible) return;
       const s = await jget("/api/system");
 
-  if (Number.isFinite(s.cpu_pct) && cpuEl) cpuEl.textContent = Math.round(s.cpu_pct) + "%";
-  if (Number.isFinite(s.ram_pct) && ramEl) ramEl.textContent = Math.round(s.ram_pct) + "%";
-  setRAM(s.ram_pct);
-  setCPU(s.cpu_pct);
-
-  if (tempEl) {
-    if (Number.isFinite(s.temp_c)) tempEl.textContent = s.temp_c.toFixed(1) + "°C";
-    else tempEl.textContent = "—";            // oder: tempEl.parentElement?.classList.add('hidden')
-  }
+      setCPU(s.cpu_pct);
+      setRAM(s.ram_pct);
+      setTEMP(s.temp_c);
     } catch (e) {
       console.warn("[system] failed", e);
     }
@@ -49,7 +43,7 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 })
         const isVis = e.isIntersecting;
         isVis ? start() : stop();
       },
-      { root: null, threshold: [0, 0.1, 1] }
+      { root: rootEl, threshold: [0, 0.1, 1] }
     );
     io.observe(containerEl);
   }
