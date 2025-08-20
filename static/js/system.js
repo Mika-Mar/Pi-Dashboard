@@ -1,9 +1,9 @@
 // static/js/system.js
 import { jget } from "./api.js";
 
-export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 }) {
+export function initSystem({ cpuEl, ramEl, tempEl, containerEl, rootEl = null, pollMs = 6000 }) {
   let intId = null;
-  let visible = true; // falls du keinen IO nutzt
+  let visible = true;
 
   // Sanfte Writer mit Checks (verhindert NaN-Anzeigen)
   const setCPU  = (v) => { if (Number.isFinite(v) && cpuEl)  cpuEl.textContent  = Math.round(v) + "%"; };
@@ -43,7 +43,9 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, pollMs = 6000 })
         const isVis = e.isIntersecting;
         isVis ? start() : stop();
       },
-      { root: null, threshold: [0, 0.1, 1] }
+
+      { root: rootEl, threshold: [0, 0.1, 1] }
+
     );
     io.observe(containerEl);
   }
