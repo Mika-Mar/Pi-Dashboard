@@ -76,18 +76,6 @@ body{
   flex: 0 0 100%;
 }
 
-.dash{
-  display:none;
-  width:100%;
-  padding: 8px;
-}
-.dash.active{
-  display:block;
-}
-
-
-
-
 /* ===== Player ===== */
 .eq {
   /* dynamisch via JS */
