@@ -67,7 +67,15 @@ body{
   overflow:hidden;
   touch-action: pan-y;
   position: relative; /* allow slides to layer above one another */
+  display: flex;
+  transition: transform .4s ease;
 }
+.dash{
+  width:100%;
+  padding: 8px;
+  flex: 0 0 100%;
+}
+
 .dash{
   display:none;
   width:100%;
@@ -76,6 +84,9 @@ body{
 .dash.active{
   display:block;
 }
+
+
+
 
 /* ===== Player ===== */
 .eq {
