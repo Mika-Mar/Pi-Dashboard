@@ -56,6 +56,7 @@ document.addEventListener("DOMContentLoaded", ()=> {
         ramEl: el("ram"),
         tempEl: el("temp"),
         containerEl: el("sysDash"),
+        rootEl: el("wrap"),
         pollMs: 6000,
     });
 
