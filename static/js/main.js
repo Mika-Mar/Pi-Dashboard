@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", ()=> {
     const carousel = initSwipe({
         wrapEl: el("dashWrap"),
         dots,
+        startIndex: 1,
     });
 
     //spotify player:
