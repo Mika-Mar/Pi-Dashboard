@@ -43,7 +43,9 @@ export function initSystem({ cpuEl, ramEl, tempEl, containerEl, rootEl = null, p
         const isVis = e.isIntersecting;
         isVis ? start() : stop();
       },
+
       { root: rootEl, threshold: [0, 0.1, 1] }
+
     );
     io.observe(containerEl);
   }
