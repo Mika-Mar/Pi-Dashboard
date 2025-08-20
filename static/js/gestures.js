@@ -12,9 +12,7 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
       s.classList.toggle("active", j === idx);
     });
 
-    // reset any residual scroll so the active slide is centered
-    wrapEl.scrollLeft = 0;
-
+    wrapEl.style.transform = `translateX(-${idx * 100}%)`;
 
     if (dots?.length) {
       dots.forEach((d, j) => d.classList.toggle("active", j === idx));
@@ -46,8 +44,6 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     }));
   }
 
-
-  // Initial display
 
   show(startIndex);
 

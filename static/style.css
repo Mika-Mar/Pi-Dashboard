@@ -81,15 +81,11 @@ body{
   width:100%;
   padding: 8px;
 }
-
-.dash{
-  display:none;
-  width:100%;
-  padding: 8px;
-}
 .dash.active{
   display:block;
 }
+
+
 
 
 /* ===== Player ===== */
@@ -231,13 +227,10 @@ body{
 }
 
 #sysDash {
+  display: flex;
   justify-content: center;
   align-items: center;
   background: var(--bg); /* ensure system slide text isn't obscured */
-}
-
-#sysDash.active {
-  display: flex;
 }
 
 #sysCenter {
