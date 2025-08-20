@@ -1,6 +1,5 @@
 // gestures.js
-
-// Simple carousel that slides between full-width pages.
+// Simple carousel that toggles between full-width pages.
 export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
   const slides = Array.from(wrapEl.children);
   let idx = startIndex;
@@ -45,11 +44,8 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     }));
   }
 
-  // Initial display without animation
-  wrapEl.style.transition = "none";
-  show(startIndex);
-  requestAnimationFrame(() => { wrapEl.style.transition = ""; });
 
+  show(startIndex);
 
   return {
     next: () => show(idx + 1),
