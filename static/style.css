@@ -47,7 +47,7 @@ body{
 #titleBlock{ text-align:center; }
 #titleText{ font-weight:700; font-size:18px; letter-spacing:.2px; }
 .muted{ color:var(--muted); }
-#clock{ justify-self:end; font-weight:600; }
+#clock{ justify-self:end; font-weight:600; font-size:48px; }
 
 /* ===== Pager Dots ===== */
 #pager{
@@ -218,26 +218,18 @@ body{
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--bg); /* ensure system slide text isn't obscured */
+  /* ensure system slide text isn't obscured */
 }
 
 #sysCenter {
   text-align: center;
-  color: #fff;
+  color: var(on-accent);;
   font-size: 48px;
   line-height: 1.2;
 }
 
-#sysCenter input {
-  background: var(--card);
-  color: var(--fg);
-  border: none;
-  border-radius: var(--radius);
-  padding: .4rem .6rem;
-}
-
 #sysCenter .sysLine {
-  margin: 10px 0;
+  margin: 30px 0;
 }
 
 :root{
