@@ -29,18 +29,6 @@ document.addEventListener("DOMContentLoaded", ()=> {
         pollMs: 6000,
     });
 
-    // Swipe-Carousel zum Wechseln der Dashboards
-    const dots = Array.from(document.querySelectorAll("#pager .dot"));
-    const carousel = initSwipe({
-        wrapEl: el("dashWrap"),
-        dots,
-        startIndex: 1,
-        onChange: (i) => {
-            if (i === 1) system.start();
-            else system.stop();
-        },
-    });
-
     //spotify player:
     const player = initPlayer({
         coverEl: el("cover"),
@@ -61,6 +49,18 @@ document.addEventListener("DOMContentLoaded", ()=> {
         pollMs: 1000,
     });
     //Debug: window.Player = player;
+
+    // Swipe-Carousel zum Wechseln der Dashboards
+    const dots = Array.from(document.querySelectorAll("#pager .dot"));
+    const carousel = initSwipe({
+        wrapEl: el("dashWrap"),
+        dots,
+        startIndex: 1,
+        onChange: (i) => {
+            if (i === 1) system.start();
+            else system.stop();
+        },
+    });
 
 
     // hier weitere Module einfügen:
