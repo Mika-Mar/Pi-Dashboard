@@ -16,8 +16,9 @@
 html,body{ height:100%; }
 body{
   margin:0; color:var(--fg); background:var(--bg);
-  font: 500 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  font: 500 14px/1.35 inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+ overflow-y: hidden;
 }
 #bg, #bgOverlay{
   position: fixed; inset: 0; pointer-events: none;
@@ -58,7 +59,7 @@ body{
   width:8px; height:8px; border-radius:999px; opacity:.45; border:0;
   background:var(--accent); padding:0; cursor:pointer;
   box-shadow:
-    0 0  2px var(--on-accent);
+    0 0  3px var(--on-accent);
 }
 #pager .dot.active{ opacity:1; transform:scale(1.2); }
 
@@ -271,3 +272,4 @@ body{
 
 /* ===== Utility ===== */
 .hidden{ display:none !important; }
+.viewport{overflow-y:hidden;}
