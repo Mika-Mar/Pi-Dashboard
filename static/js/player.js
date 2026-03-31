@@ -3,8 +3,7 @@ import { dominantFromImage, boostColor } from "./colorCalc.js";
 import { applyAccent } from "./theme.js";
 
 export function initPlayer({
-  coverEl,
-                             dotsEl,
+  coverEl, dotsEl,
   bgEl,
   titleEl,
   artistEl,
@@ -15,8 +14,7 @@ export function initPlayer({
   btnPlayEl,
   btnPrevEl,
   btnNextEl,
-  eqTextEl,
-                             eqTopEl,
+  eqTextEl, eqTopEl,
   pollMs = 1000,
 }) {
   // ---- State ----

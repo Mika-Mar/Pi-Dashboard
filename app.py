@@ -250,4 +250,4 @@ def cover_svg(n: int):
 # ---------- Dev-Server ----------
 if __name__ == "__main__":
     # Auf dem Pi lieber Port 8080 nutzen (oder wie du magst)
-    app.run(host="0.0.0.0", port=8888, debug=True)
+    app.run(host="0.0.0.0", port=8888, debug=false)
