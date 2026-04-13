@@ -55,12 +55,32 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     if (Math.abs(dx) > THRESH) show(idx + (dx < 0 ? 1 : -1));
   }, { passive: true });
 
+  const bindActivate = (el, fn) => {
+    if (!el || typeof fn !== "function") return;
+    let pointerHandled = false;
+
+    el.addEventListener("pointerup", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerHandled = true;
+      e.preventDefault();
+      e.stopPropagation();
+      fn(e);
+    });
+
+    el.addEventListener("click", (e) => {
+      if (pointerHandled) {
+        pointerHandled = false;
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      fn(e);
+    });
+  };
+
   // Dot navigation (real slide indices)
   if (dots?.length) {
-    dots.forEach((d, i) => d.addEventListener("click", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      show(i + 1);
-    }));
+    dots.forEach((d, i) => bindActivate(d, () => show(i + 1)));
   }
 
   // Initialize
@@ -72,4 +92,3 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     go: (i) => show(i + 1),
   };
 }
-
