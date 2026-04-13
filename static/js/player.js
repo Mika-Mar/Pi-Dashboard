@@ -17,6 +17,26 @@ export function initPlayer({
   eqTextEl, eqTopEl,
   pollMs = 1000,
 }) {
+  const bindActivate = (el, fn) => {
+    if (!el || typeof fn !== "function") return;
+    let pointerHandled = false;
+
+    el.addEventListener("pointerup", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerHandled = true;
+      e.preventDefault();
+      fn(e);
+    });
+
+    el.addEventListener("click", (e) => {
+      if (pointerHandled) {
+        pointerHandled = false;
+        return;
+      }
+      fn(e);
+    });
+  };
+
   // ---- State ----
   let trackId = null;
   let durationMs = 0;
@@ -206,17 +226,30 @@ export function initPlayer({
   }
 
   // ---- Events ----
-  btnPlayEl?.addEventListener("click", toggle);
-  btnPrevEl?.addEventListener("click", prev);   // <— Funktionsreferenz!
-  btnNextEl?.addEventListener("click", next);   // <— Funktionsreferenz!
+  bindActivate(btnPlayEl, toggle);
+  bindActivate(btnPrevEl, prev);
+  bindActivate(btnNextEl, next);
 
   if (progressWrapEl && progressBarEl) {
-    progressWrapEl.addEventListener("click", (e) => {
+    let progressPointerHandled = false;
+    const onProgress = (e) => {
       if (!controlsArmed() || !readyToSeek) return;
       const rect = progressWrapEl.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const ratio = rect.width > 0 ? x / rect.width : 0;
       seekTo(ratio);
+    };
+
+    progressWrapEl.addEventListener("pointerup", (e) => {
+      progressPointerHandled = true;
+      onProgress(e);
+    });
+    progressWrapEl.addEventListener("click", (e) => {
+      if (progressPointerHandled) {
+        progressPointerHandled = false;
+        return;
+      }
+      onProgress(e);
     }, { passive: true });
   }
 
