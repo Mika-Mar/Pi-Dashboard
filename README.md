@@ -1,5 +1,27 @@
 # Pi Dashboard
 
+## Installation
+
+Create the virtual environment and install every required package with one command:
+
+```shell
+./setup.sh
+```
+
+The script can be run again later to synchronize an existing `.venv` with
+`requirements.txt`. To select a different Python executable, use for example:
+
+```shell
+PI_DASHBOARD_PYTHON=python3.11 ./setup.sh
+```
+
+Without the script, the equivalent commands are:
+
+```shell
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
 ## Spotify setup
 
 Spotify requires an app created in the
