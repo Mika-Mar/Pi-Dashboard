@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from flask import Flask, render_template, jsonify, request, Response
+from pathlib import Path
+from typing import Optional
 import subprocess, psutil, time, math, os
 
 app = Flask(__name__)
@@ -49,12 +51,18 @@ def api_weather():
 import os, time, math
 from urllib.parse import urlparse, quote_plus
 import requests
+import click
 from dotenv import load_dotenv
+from dotenv import set_key
 import spotipy
+from spotipy.exceptions import SpotifyOauthError
 from spotipy.oauth2 import SpotifyOAuth
 from flask import session, redirect, url_for, request, jsonify, Response, abort
 
-load_dotenv()
+ENV_PATH = Path(
+    os.getenv("PI_DASHBOARD_ENV_FILE", Path(__file__).with_name(".env"))
+).expanduser()
+load_dotenv(ENV_PATH)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-dev-dev")
 
 SPOTIFY_SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
@@ -62,33 +70,121 @@ SPOTIFY_SCOPE = "user-read-playback-state user-modify-playback-state user-read-c
 # Cache-Datei => nach erstem Login bleibt der Refresh-Token erhalten
 CACHE_PATH = os.getenv("SPOTIPY_CACHE_PATH", ".cache-pi-dashboard")
 
-sp_oauth = SpotifyOAuth(
-    scope=SPOTIFY_SCOPE,
-    cache_path=CACHE_PATH,
-    client_id=os.getenv("SPOTIPY_CLIENT_ID"),
-    client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-    redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
-    show_dialog=False,
-)
+DEFAULT_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/spotify/callback"
+_sp_oauth: Optional[SpotifyOAuth] = None
+_sp_oauth_config: Optional[tuple[str, str, str]] = None
 
-def spotify_client() -> spotipy.Spotify or None:
+
+def spotify_configuration():
+    """Load Spotify settings from the environment (including the local .env)."""
+    client_id = os.getenv("SPOTIPY_CLIENT_ID") or os.getenv("SPOTIFY_CLIENT_ID")
+    client_secret = (
+        os.getenv("SPOTIPY_CLIENT_SECRET") or os.getenv("SPOTIFY_CLIENT_SECRET")
+    )
+    redirect_uri = (
+        os.getenv("SPOTIPY_REDIRECT_URI")
+        or os.getenv("SPOTIFY_REDIRECT_URI")
+        or DEFAULT_SPOTIFY_REDIRECT_URI
+    )
+    return client_id, client_secret, redirect_uri
+
+
+def spotify_oauth() -> Optional[SpotifyOAuth]:
+    """Create the OAuth manager only after credentials have been configured."""
+    global _sp_oauth, _sp_oauth_config
+    config = spotify_configuration()
+    client_id, client_secret, redirect_uri = config
+    if not client_id or not client_secret:
+        return None
+    if _sp_oauth is None or config != _sp_oauth_config:
+        _sp_oauth = SpotifyOAuth(
+            scope=SPOTIFY_SCOPE,
+            cache_path=CACHE_PATH,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            show_dialog=False,
+        )
+        _sp_oauth_config = config
+    return _sp_oauth
+
+
+@app.cli.command("spotify-setup")
+def spotify_setup_command():
+    """Save Spotify app credentials so later starts load them automatically."""
+    click.echo("Create an app first: https://developer.spotify.com/dashboard")
+    click.echo(
+        "Add this exact Redirect URI in its settings: "
+        f"{DEFAULT_SPOTIFY_REDIRECT_URI}"
+    )
+    client_id = click.prompt("Spotify client ID").strip()
+    client_secret = click.prompt("Spotify client secret", hide_input=True).strip()
+    redirect_uri = click.prompt(
+        "Redirect URI", default=DEFAULT_SPOTIFY_REDIRECT_URI
+    ).strip()
+
+    ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ENV_PATH.touch(mode=0o600, exist_ok=True)
+    try:
+        ENV_PATH.chmod(0o600)
+    except OSError:
+        pass
+    set_key(str(ENV_PATH), "SPOTIPY_CLIENT_ID", client_id)
+    set_key(str(ENV_PATH), "SPOTIPY_CLIENT_SECRET", client_secret)
+    set_key(str(ENV_PATH), "SPOTIPY_REDIRECT_URI", redirect_uri)
+    click.echo(f"Spotify credentials saved in {ENV_PATH}.")
+    click.echo("Start the dashboard, then open /spotify/login once to authorize it.")
+
+
+def spotify_client() -> Optional[spotipy.Spotify]:
     """Gibt einen Spotipy-Client zurück oder None, wenn (noch) nicht eingeloggt."""
+    oauth = spotify_oauth()
+    if oauth is None:
+        return None
     # Token im Cache vorhanden?
-    token_info = sp_oauth.get_cached_token()
+    try:
+        token_info = oauth.get_cached_token()
+    except SpotifyOauthError as error:
+        if error.error != "invalid_grant":
+            raise
+        # Ein widerrufener Refresh-Token kann nie wieder verwendet werden.
+        # Cache entfernen, damit ein neuer Login ihn sauber ersetzen kann.
+        cache_path = Path(oauth.cache_handler.cache_path).expanduser()
+        try:
+            cache_path.unlink()
+        except FileNotFoundError:
+            pass
+        session.pop("spotify_authed", None)
+        return None
     if not token_info:
         return None
     # Spotipy kümmert sich via auth_manager um Refresh
-    return spotipy.Spotify(auth_manager=sp_oauth)
+    return spotipy.Spotify(auth_manager=oauth)
+
+
+@app.get("/spotify/setup")
+def spotify_setup():
+    _, _, redirect_uri = spotify_configuration()
+    return (
+        "<h1>Spotify setup</h1>"
+        "<p>Spotify does not provide an API that can create or retrieve app "
+        "credentials. Create an app in the "
+        '<a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a>, '
+        f"add <code>{redirect_uri}</code> as its Redirect URI, then run:</p>"
+        "<pre>flask --app app spotify-setup</pre>"
+        "<p>The dashboard will load the saved credentials automatically afterwards.</p>"
+    ), 503
 
 @app.get("/spotify/login")
 def spotify_login():
-    auth_url = sp_oauth.get_authorize_url()
+    oauth = spotify_oauth()
+    if oauth is None:
+        return redirect(url_for("spotify_setup"))
+    auth_url = oauth.get_authorize_url()
     return redirect(auth_url)
 
 @app.get("/spotify/callback")
 def spotify_callback():
-    # Debug-Ausgabe hilft bei Mismatches
-    print("CALLBACK ARGS:", dict(request.args))
     err = request.args.get("error")
     if err:
         return f"Spotify error: {err}", 400
@@ -100,7 +196,11 @@ def spotify_callback():
                 'Starte den Login neu: <a href="/spotify/login">/spotify/login</a>'), 400
 
     # Tausche Code gegen Tokens (wird im Cache gespeichert)
-    sp_oauth.get_access_token(code)
+    oauth = spotify_oauth()
+    if oauth is None:
+        return redirect(url_for("spotify_setup"))
+    # Einen eventuell ungültigen alten Cache beim Code-Austausch nicht prüfen.
+    oauth.get_access_token(code, check_cache=False)
     session["spotify_authed"] = True
     return redirect(url_for("index"))
 # --- Cover-Proxy: damit Canvas-Farbanalyse same-origin ist ---
@@ -124,6 +224,16 @@ def proxy_cover():
 
 @app.get("/api/spotify/current")
 def api_spotify_current():
+    if spotify_oauth() is None:
+        return jsonify({
+            "is_playing": False,
+            "progress_ms": 0,
+            "duration_ms": 0,
+            "track": None,
+            "need_login": True,
+            "spotify_configured": False,
+            "setup_url": url_for("spotify_setup"),
+        }), 200
     sp = spotify_client()
     if not sp:
         # Frontend kann /spotify/login verlinken, wenn not authed
@@ -250,4 +360,4 @@ def cover_svg(n: int):
 # ---------- Dev-Server ----------
 if __name__ == "__main__":
     # Auf dem Pi lieber Port 8080 nutzen (oder wie du magst)
-    app.run(host="0.0.0.0", port=8888, debug=false)
+    app.run(host="0.0.0.0", port=8888, debug=False)

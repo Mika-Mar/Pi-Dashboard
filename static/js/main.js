@@ -19,6 +19,30 @@ document.addEventListener("DOMContentLoaded", ()=> {
     tick();
     setInterval(tick, 1000);
 
+    // Langsame Hintergrunddrehung (Zustand bleibt im Browser gespeichert)
+    const bg = el("bgOverlay");
+    const bgRotateButton = el("btnBgRotate");
+    const bgRotateStorageKey = "pi-dashboard-bg-rotating";
+    let bgRotating = false;
+    try {
+        bgRotating = localStorage.getItem(bgRotateStorageKey) === "true";
+    } catch {}
+
+    const setBgRotating = (enabled) => {
+        bgRotating = enabled;
+        bg?.classList.toggle("bg-rotating", enabled);
+        bgRotateButton?.setAttribute("aria-pressed", String(enabled));
+        bgRotateButton?.setAttribute(
+            "aria-label",
+            enabled ? "Hintergrunddrehung ausschalten" : "Hintergrunddrehung einschalten",
+        );
+        try {
+            localStorage.setItem(bgRotateStorageKey, String(enabled));
+        } catch {}
+    };
+    setBgRotating(bgRotating);
+    bgRotateButton?.addEventListener("click", () => setBgRotating(!bgRotating));
+
 
 
     // System-Kachel (CPU/RAM/Temperatur)

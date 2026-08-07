@@ -9,14 +9,24 @@
 <body>
   <!-- Hintergrund -->
   <div id="bg"></div>
-  <div id="bgOverlay"></div>
+  <div id="bgOverlay"><div id="bgArtwork" aria-hidden="true"></div></div>
 
   <main id="wrap">
     <!-- Top-Bar -->
     <header id="top">
-      <div id="eq-top" class="eq" aria-hidden="true">
-        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-        <span class="bar"></span><span class="bar"></span>
+      <div id="topLeft">
+        <div id="eq-top" class="eq" aria-hidden="true">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span>
+        </div>
+        <button
+          id="btnBgRotate"
+          type="button"
+          aria-controls="bgOverlay"
+          aria-label="Hintergrunddrehung einschalten"
+          aria-pressed="false"
+          title="Hintergrund drehen"
+        >↻</button>
       </div>
       <div id="titleBlock">
         <div id="titleText">—</div>
