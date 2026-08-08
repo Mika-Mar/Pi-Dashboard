@@ -43,6 +43,30 @@ document.addEventListener("DOMContentLoaded", ()=> {
     setBgRotating(bgRotating);
     bgRotateButton?.addEventListener("click", () => setBgRotating(!bgRotating));
 
+    // Cover als Schallplatte anzeigen; die Wiedergabe steuert die Rotation.
+    const coverWrap = el("coverWrap");
+    const vinylButton = el("btnVinyl");
+    const vinylStorageKey = "pi-dashboard-vinyl-mode";
+    let vinylMode = false;
+    try {
+        vinylMode = localStorage.getItem(vinylStorageKey) === "true";
+    } catch {}
+
+    const setVinylMode = (enabled) => {
+        vinylMode = enabled;
+        coverWrap?.classList.toggle("vinyl-mode", enabled);
+        vinylButton?.setAttribute("aria-pressed", String(enabled));
+        vinylButton?.setAttribute(
+            "aria-label",
+            enabled ? "Schallplattenmodus ausschalten" : "Schallplattenmodus einschalten",
+        );
+        try {
+            localStorage.setItem(vinylStorageKey, String(enabled));
+        } catch {}
+    };
+    setVinylMode(vinylMode);
+    vinylButton?.addEventListener("click", () => setVinylMode(!vinylMode));
+
 
 
     // System-Kachel (CPU/RAM/Temperatur)
@@ -70,7 +94,7 @@ document.addEventListener("DOMContentLoaded", ()=> {
         btnNextEl: el("btnNext"),
         eqTopEl : el("eq-top"),
         eqTextEl : el("eq-text"),
-        pollMs: 1000,
+        pollMs: 10000,
     });
     //Debug: window.Player = player;
 

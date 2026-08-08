@@ -74,6 +74,7 @@ export function initPlayer({
   // Klassen toggeln
     eqTopEl?.classList.toggle("paused", paused);
     eqTextEl?.classList.toggle("paused", paused);
+    coverEl?.classList.toggle("cover--playing", !paused);
     // Fallback direkt auf die Bars (falls CSS überschrieben wird)
     [eqTopEl, eqTextEl].forEach(root=>{
       if(!root) return;
@@ -175,6 +176,24 @@ export function initPlayer({
     }
   }
   const pollId = setInterval(refreshOnce, pollMs);
+  const controlRefreshTimers = new Set();
+
+  function refreshAfterControl() {
+    // Sofort pollen; kurze Wiederholungen fangen Spotifys verzögerte
+    // Zustandsübernahme ab, ohne auf das reguläre Intervall zu warten.
+    controlRefreshTimers.forEach(clearTimeout);
+    controlRefreshTimers.clear();
+    void refreshOnce();
+
+    [250, 800].forEach((delay) => {
+      const timerId = setTimeout(() => {
+        controlRefreshTimers.delete(timerId);
+        void refreshOnce();
+      }, delay);
+      controlRefreshTimers.add(timerId);
+    });
+  }
+
   refreshOnce();
   rafId = requestAnimationFrame(loop);
 
@@ -190,7 +209,7 @@ export function initPlayer({
         playStartWall = Date.now() - cur;
       }
       render();
-      setTimeout(refreshOnce, 200);
+      refreshAfterControl();
     } catch {}
   }
 
@@ -198,7 +217,7 @@ export function initPlayer({
     if (!controlsArmed()) return;
     try {
       await jpost("/api/spotify/next");
-      setTimeout(refreshOnce, 200);
+      refreshAfterControl();
     } catch {}
   }
 
@@ -206,7 +225,7 @@ export function initPlayer({
     if (!controlsArmed()) return;
     try {
       await jpost("/api/spotify/prev");
-      setTimeout(refreshOnce, 200);
+      refreshAfterControl();
     } catch {}
   }
 
@@ -262,6 +281,8 @@ export function initPlayer({
     },
     destroy() {
       clearInterval(pollId);
+      controlRefreshTimers.forEach(clearTimeout);
+      controlRefreshTimers.clear();
       cancelAnimationFrame(rafId);
     },
   };
