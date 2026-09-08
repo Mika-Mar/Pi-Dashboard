@@ -7,6 +7,16 @@ import subprocess, psutil, time, math, os
 
 app = Flask(__name__)
 
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+ENV_PATH = Path(
+    os.getenv("PI_DASHBOARD_ENV_FILE", Path(__file__).with_name(".env"))
+).expanduser()
+
+load_dotenv(ENV_PATH)
+
 # ---------- Helpers ----------
 def cpu_temp():
     # 1) vcgencmd (Pi)
@@ -77,40 +87,64 @@ def get_pihole_sid():
 
     return _pihole_sid
 @app.get("/api/pihole")
+@app.get("/api/pihole")
 def api_pihole():
     global _pihole_sid
 
     try:
         sid = get_pihole_sid()
+        headers = {"X-FTL-SID": sid}
 
-        r = requests.get(
-            f"{PIHOLE_URL}/api/info/version",
-            headers={"X-FTL-SID": sid},
+        stats_r = requests.get(
+            f"{PIHOLE_URL}/api/stats/summary",
+            headers=headers,
             timeout=3,
         )
 
-        if r.status_code == 401:
+        blocking_r = requests.get(
+            f"{PIHOLE_URL}/api/dns/blocking",
+            headers=headers,
+            timeout=3,
+        )
+
+        # Session abgelaufen -> einmal neu anmelden
+        if stats_r.status_code == 401 or blocking_r.status_code == 401:
             _pihole_sid = None
             sid = get_pihole_sid()
+            headers = {"X-FTL-SID": sid}
 
-            r = requests.get(
-                f"{PIHOLE_URL}/api/info/version",
-                headers={"X-FTL-SID": sid},
+            stats_r = requests.get(
+                f"{PIHOLE_URL}/api/stats/summary",
+                headers=headers,
                 timeout=3,
             )
 
-        r.raise_for_status()
+            blocking_r = requests.get(
+                f"{PIHOLE_URL}/api/dns/blocking",
+                headers=headers,
+                timeout=3,
+            )
+
+        stats_r.raise_for_status()
+        blocking_r.raise_for_status()
+
+        stats = stats_r.json()
+        blocking = blocking_r.json()
+
+        queries = stats["queries"]
 
         return jsonify({
-            "enabled": True,
             "configured": True,
-            "version": r.json(),
+            "enabled": blocking.get("blocking") == "enabled",
+            "queries": queries.get("total", 0),
+            "blocked": queries.get("blocked", 0),
+            "blocked_percent": queries.get("percent_blocked", 0),
         })
 
     except Exception as e:
         return jsonify({
-            "enabled": False,
             "configured": bool(PIHOLE_APP_PASSWORD),
+            "enabled": False,
             "error": str(e),
         }), 502
 # ---------- Optional APIs (erstmal ausgeschaltet) ----------
