@@ -53,11 +53,78 @@ def api_system():
         "uptime_seconds": uptime_seconds,
         "internet_online": internet_online,
     })
-# ---------- Optional APIs (erstmal ausgeschaltet) ----------
+
+PIHOLE_URL = os.getenv("PIHOLE_URL", "http://127.0.0.1")
+PIHOLE_APP_PASSWORD = os.getenv("PIHOLE_APP_PASSWORD")
+
+_pihole_sid = None
+
+
+def pihole_sid():
+    global _pihole_sid
+
+    if _pihole_sid:
+        return _pihole_sid
+
+    if not PIHOLE_APP_PASSWORD:
+        return None
+
+    response = requests.post(
+        f"{PIHOLE_URL}/api/auth",
+        json={"password": PIHOLE_APP_PASSWORD},
+        timeout=3,
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    _pihole_sid = data["session"]["sid"]
+
+    return _pihole_sid
+
 @app.get("/api/pihole")
 def api_pihole():
-    # Später echt anbinden; fürs Testen "disabled"
-    return jsonify({ "enabled": False })
+    sid = pihole_sid()
+
+    if not sid:
+        return jsonify({
+            "enabled": False,
+            "configured": False,
+        })
+
+    try:
+        response = requests.get(
+            f"{PIHOLE_URL}/api/info/version",
+            headers={"X-FTL-SID": sid},
+            timeout=3,
+        )
+
+        # Session abgelaufen
+        if response.status_code == 401:
+            global _pihole_sid
+            _pihole_sid = None
+            sid = pihole_sid()
+
+            response = requests.get(
+                f"{PIHOLE_URL}/api/info/version",
+                headers={"X-FTL-SID": sid},
+                timeout=3,
+            )
+
+        response.raise_for_status()
+
+        return jsonify({
+            "enabled": True,
+            "configured": True,
+            "version": response.json(),
+        })
+
+    except requests.RequestException as e:
+        return jsonify({
+            "enabled": False,
+            "configured": True,
+            "error": str(e),
+        }), 502
+# ---------- Optional APIs (erstmal ausgeschaltet) ----------
 
 @app.get("/api/weather")
 def api_weather():
@@ -373,6 +440,65 @@ def cover_svg(n: int):
   <circle cx="460" cy="520" r="90" fill="rgba(255,255,255,0.08)"/>
 </svg>"""
     return Response(svg, mimetype="image/svg+xml")
+
+@app.get("/api/desktop")
+def api_desktop():
+    desktop_ip = os.getenv("DESKTOP_IP")
+
+    if not desktop_ip:
+        return jsonify({
+            "configured": False,
+            "online": False
+        })
+
+    try:
+        result = subprocess.run(
+            ["ping", "-c", "1", "-W", "1", desktop_ip],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        )
+        online = result.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        online = False
+
+    return jsonify({
+        "configured": True,
+        "online": online
+    })
+
+import socket
+
+def send_magic_packet(mac_address: str):
+    mac = mac_address.replace(":", "").replace("-", "")
+
+    if len(mac) != 12:
+        raise ValueError("Invalid MAC address")
+
+    data = bytes.fromhex("FF" * 6 + mac * 16)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.sendto(data, ("255.255.255.255", 9))
+
+@app.post("/api/desktop/wake")
+def api_desktop_wake():
+    mac = os.getenv("DESKTOP_MAC")
+
+    if not mac:
+        return jsonify({
+            "ok": False,
+            "error": "DESKTOP_MAC not configured"
+        }), 503
+
+    try:
+        send_magic_packet(mac)
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 400
 
 # ---------- Dev-Server ----------
 if __name__ == "__main__":

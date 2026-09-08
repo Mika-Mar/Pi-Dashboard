@@ -98,8 +98,19 @@
                 <div class="sysLine">Disk: <span id="disk">—%</span></div>
                 <div class="sysLine">Uptime: <span id="uptime">—</span></div>
                 <div class="sysLine">
-                    Internet: <span id="internet">—</span>
+                    Internet:
+                    <span id="internetDot" class="statusDot"></span>
+                    <span id="internet">—</span>
                 </div>
+                <div class="sysLine">
+                    Desktop:
+                    <span id="desktopDot" class="statusDot"></span>
+                    <span id="desktopStatus">—</span>
+                </div>
+
+                <button id="wakeDesktop" type="button">
+                    Wake Desktop
+                </button>
             </div>
         </section>
 

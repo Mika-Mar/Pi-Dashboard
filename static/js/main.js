@@ -1,11 +1,10 @@
-
-
-import { initSystem } from "./system.js";
-import { initSwipe } from "./gestures.js";
-import { initPlayer } from "./player.js";
+import {initSystem} from "./system.js";
+import {initSwipe} from "./gestures.js";
+import {initPlayer} from "./player.js";
+import {initDesktop} from "./desktop.js";
 //hier später noch die anderen
 
-document.addEventListener("DOMContentLoaded", ()=> {
+document.addEventListener("DOMContentLoaded", () => {
     // DOM-Refs einsammeln (nur ids, kein query-Chaos)
     const el = (id) => document.getElementById(id);
 
@@ -26,7 +25,8 @@ document.addEventListener("DOMContentLoaded", ()=> {
     let bgRotating = false;
     try {
         bgRotating = localStorage.getItem(bgRotateStorageKey) === "true";
-    } catch {}
+    } catch {
+    }
 
     const setBgRotating = (enabled) => {
         bgRotating = enabled;
@@ -38,7 +38,8 @@ document.addEventListener("DOMContentLoaded", ()=> {
         );
         try {
             localStorage.setItem(bgRotateStorageKey, String(enabled));
-        } catch {}
+        } catch {
+        }
     };
     setBgRotating(bgRotating);
     bgRotateButton?.addEventListener("click", () => setBgRotating(!bgRotating));
@@ -50,7 +51,8 @@ document.addEventListener("DOMContentLoaded", ()=> {
     let vinylMode = false;
     try {
         vinylMode = localStorage.getItem(vinylStorageKey) === "true";
-    } catch {}
+    } catch {
+    }
 
     const setVinylMode = (enabled) => {
         vinylMode = enabled;
@@ -62,11 +64,11 @@ document.addEventListener("DOMContentLoaded", ()=> {
         );
         try {
             localStorage.setItem(vinylStorageKey, String(enabled));
-        } catch {}
+        } catch {
+        }
     };
     setVinylMode(vinylMode);
     vinylButton?.addEventListener("click", () => setVinylMode(!vinylMode));
-
 
 
     // System-Kachel (CPU/RAM/Temperatur)
@@ -76,6 +78,13 @@ document.addEventListener("DOMContentLoaded", ()=> {
         tempEl: el("temp"),
         pollMs: 6000,
     });
+
+    const desktop = initDesktop({
+        statusEl: el("desktopStatus"),
+        wakeButton: el("wakeDesktop"),
+        pollMs: 5000,
+    });
+
 
     //spotify player:
     const player = initPlayer({
@@ -92,8 +101,8 @@ document.addEventListener("DOMContentLoaded", ()=> {
         btnPlayEl: el("btnPlay"),
         btnPrevEl: el("btnPrev"),
         btnNextEl: el("btnNext"),
-        eqTopEl : el("eq-top"),
-        eqTextEl : el("eq-text"),
+        eqTopEl: el("eq-top"),
+        eqTextEl: el("eq-text"),
         pollMs: 10000,
     });
     //Debug: window.Player = player;
@@ -105,8 +114,13 @@ document.addEventListener("DOMContentLoaded", ()=> {
         dots,
         startIndex: 1,
         onChange: (i) => {
-            if (i === 1) system.start();
-            else system.stop();
+            if (i === 1) {
+                system.start();
+                desktop.start();
+            } else {
+                system.stop();
+                desktop.stop();
+            }
         },
     });
 
@@ -116,10 +130,14 @@ document.addEventListener("DOMContentLoaded", ()=> {
 
     // aufräumen bei verstecken der Seiten:
     document.addEventListener("visibilitychange", () => {
-        if(document.hidden) {
-
-        }else{
-
+        if (document.hidden) {
+            system.stop();
+            desktop.stop();
+            player.stop?.();
+        } else {
+            // Startet nur die Module des aktuellen Slides idealerweise über Carousel-Logik.
+            system.refresh();
+            desktop.refresh();
         }
-    })
+    });
 })
