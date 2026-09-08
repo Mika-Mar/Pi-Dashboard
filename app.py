@@ -59,69 +59,58 @@ PIHOLE_APP_PASSWORD = os.getenv("PIHOLE_APP_PASSWORD")
 
 _pihole_sid = None
 
-
-def pihole_sid():
+def get_pihole_sid():
     global _pihole_sid
 
     if _pihole_sid:
         return _pihole_sid
 
-    if not PIHOLE_APP_PASSWORD:
-        return None
-
-    response = requests.post(
+    r = requests.post(
         f"{PIHOLE_URL}/api/auth",
         json={"password": PIHOLE_APP_PASSWORD},
         timeout=3,
     )
-    response.raise_for_status()
+    r.raise_for_status()
 
-    data = response.json()
+    data = r.json()
     _pihole_sid = data["session"]["sid"]
 
     return _pihole_sid
-
 @app.get("/api/pihole")
 def api_pihole():
-    sid = pihole_sid()
-
-    if not sid:
-        return jsonify({
-            "enabled": False,
-            "configured": False,
-        })
+    global _pihole_sid
 
     try:
-        response = requests.get(
+        sid = get_pihole_sid()
+
+        r = requests.get(
             f"{PIHOLE_URL}/api/info/version",
             headers={"X-FTL-SID": sid},
             timeout=3,
         )
 
-        # Session abgelaufen
-        if response.status_code == 401:
-            global _pihole_sid
+        if r.status_code == 401:
             _pihole_sid = None
-            sid = pihole_sid()
+            sid = get_pihole_sid()
 
-            response = requests.get(
+            r = requests.get(
                 f"{PIHOLE_URL}/api/info/version",
                 headers={"X-FTL-SID": sid},
                 timeout=3,
             )
 
-        response.raise_for_status()
+        r.raise_for_status()
 
         return jsonify({
             "enabled": True,
             "configured": True,
-            "version": response.json(),
+            "version": r.json(),
         })
 
-    except requests.RequestException as e:
+    except Exception as e:
         return jsonify({
             "enabled": False,
-            "configured": True,
+            "configured": bool(PIHOLE_APP_PASSWORD),
             "error": str(e),
         }), 502
 # ---------- Optional APIs (erstmal ausgeschaltet) ----------
