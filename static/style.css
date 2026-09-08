@@ -147,7 +147,7 @@ button, input, select, textarea{ font: inherit; }
   min-height: 100%;
   padding: .571rem;
   flex: 0 0 100%;
-  overflow-y: auto;
+  overflow:hidden;
 }
 
 /* ===== Player ===== */
@@ -371,12 +371,29 @@ button, input, select, textarea{ font: inherit; }
 #sysCenter {
   text-align: center;
   color: var(--on-accent);
-  font-size: 3.429rem;
-  line-height: 1.2;
+
+  /* skaliert mit der verfügbaren Displayhöhe */
+  font-size: clamp(1.8rem, 5vh, 3.429rem);
+  line-height: 1.1;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  gap: clamp(.45rem, 1.6vh, 1rem);
+
+  max-height: 100%;
 }
 
 #sysCenter .sysLine {
-  margin: 2.143rem 0;
+  margin: 0;
+}
+
+#sysDash {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
 :root{

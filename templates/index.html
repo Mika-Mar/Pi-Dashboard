@@ -1,119 +1,129 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pi Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Pi Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <!-- Hintergrund -->
-  <div id="bg"></div>
-  <div id="bgOverlay"><div id="bgArtwork" aria-hidden="true"></div></div>
+<!-- Hintergrund -->
+<div id="bg"></div>
+<div id="bgOverlay">
+    <div id="bgArtwork" aria-hidden="true"></div>
+</div>
 
-  <main id="wrap">
+<main id="wrap">
     <!-- Top-Bar -->
     <header id="top">
-      <div id="topLeft">
-        <div id="eq-top" class="eq" aria-hidden="true">
-          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-          <span class="bar"></span><span class="bar"></span>
+        <div id="topLeft">
+            <div id="eq-top" class="eq" aria-hidden="true">
+                <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                <span class="bar"></span><span class="bar"></span>
+            </div>
+            <button
+                    id="btnBgRotate"
+                    type="button"
+                    aria-controls="bgOverlay"
+                    aria-label="Hintergrunddrehung einschalten"
+                    aria-pressed="false"
+                    title="Hintergrund drehen"
+            >↻
+            </button>
+            <button
+                    id="btnVinyl"
+                    type="button"
+                    aria-controls="coverWrap"
+                    aria-label="Schallplattenmodus einschalten"
+                    aria-pressed="false"
+                    title="Schallplattenmodus"
+            >◉
+            </button>
         </div>
-        <button
-          id="btnBgRotate"
-          type="button"
-          aria-controls="bgOverlay"
-          aria-label="Hintergrunddrehung einschalten"
-          aria-pressed="false"
-          title="Hintergrund drehen"
-        >↻</button>
-        <button
-          id="btnVinyl"
-          type="button"
-          aria-controls="coverWrap"
-          aria-label="Schallplattenmodus einschalten"
-          aria-pressed="false"
-          title="Schallplattenmodus"
-        >◉</button>
-      </div>
-      <div id="titleBlock">
-        <div id="titleText">—</div>
-        <div id="artistText" class="muted">—</div>
-      </div>
-      <div id="clock" aria-label="Uhr">00:00</div>
+        <div id="titleBlock">
+            <div id="titleText">—</div>
+            <div id="artistText" class="muted">—</div>
+        </div>
+        <div id="clock" aria-label="Uhr">00:00</div>
     </header>
 
     <!-- Pager-Dots -->
     <nav id="pager" aria-label="Seiten">
-      <button type="button" class="dot" aria-label="Now Playing"></button>
-      <button type="button" class="dot" aria-label="System"></button>
-      <button type="button" class="dot" aria-label="Pi-hole"></button>
-      <button type="button" class="dot" aria-label="Wetter"></button>
+        <button type="button" class="dot" aria-label="Now Playing"></button>
+        <button type="button" class="dot" aria-label="System"></button>
+        <button type="button" class="dot" aria-label="Pi-hole"></button>
+        <button type="button" class="dot" aria-label="Wetter"></button>
     </nav>
 
     <!-- Swipe-Container mit 4 Seiten -->
     <div id="dashWrap" aria-roledescription="carousel">
-      <!-- Slide 0: Now Playing -->
-      <section class="dash" id="dash-now">
-        <div id="player">
-          <div id="coverWrap">
-            <img id="cover" crossOrigin="anonymous" alt="Albumcover" />
-          </div>
+        <!-- Slide 0: Now Playing -->
+        <section class="dash" id="dash-now">
+            <div id="player">
+                <div id="coverWrap">
+                    <img id="cover" crossOrigin="anonymous" alt="Albumcover"/>
+                </div>
 
-          <div id="meta">
-            <div id="albumText" class="muted"> </div>
-            <div id="eq-text" class="eq">
-            <span></span>
-            <span></span>
-            <span></span>
+                <div id="meta">
+                    <div id="albumText" class="muted"></div>
+                    <div id="eq-text" class="eq">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <div id="progress" role="slider" aria-label="Track-Fortschritt" aria-valuemin="0"
+                         aria-valuemax="100">
+                        <div id="progressFill" class="fill"></div>
+                    </div>
+                    <div id="times">
+                        <span id="timeNow">0:00</span>
+                        <span id="timeTotal">0:00</span>
+                    </div>
+
+                    <div id="controls" role="group" aria-label="Player-Steuerung">
+                        <button id="btnPrev" aria-label="Vorheriger Track">⏮</button>
+                        <button id="btnPlay" aria-label="Play/Pause">⏯</button>
+                        <button id="btnNext" aria-label="Nächster Track">⏭</button>
+                    </div>
+                </div>
             </div>
-            <div id="progress" role="slider" aria-label="Track-Fortschritt" aria-valuemin="0" aria-valuemax="100">
-              <div id="progressFill" class="fill"></div>
+        </section>
+
+        <!-- Slide 1: System -->
+        <section class="dash active" id="sysDash">
+            <div id="sysCenter">
+                <div class="sysLine">CPU: <span id="cpu">—%</span></div>
+                <div class="sysLine">RAM: <span id="ram">—%</span></div>
+                <div class="sysLine">Temp: <span id="temp">—°C</span></div>
+                <div class="sysLine">Disk: <span id="disk">—%</span></div>
+                <div class="sysLine">Uptime: <span id="uptime">—</span></div>
+                <div class="sysLine">
+                    Internet: <span id="internet">—</span>
+                </div>
             </div>
-            <div id="times">
-              <span id="timeNow">0:00</span>
-              <span id="timeTotal">0:00</span>
+        </section>
+
+        <!-- Slide 2: Pi-hole -->
+        <section class="dash" id="piDash">
+            <div class="tiles">
+                <div class="tile" id="piTile" style="display:none;">
+                    🚫 <span id="blocked">0</span> • 🌐 <span id="dns">0</span> • <span id="ratio">0.0</span>%
+                </div>
             </div>
+        </section>
 
-            <div id="controls" role="group" aria-label="Player-Steuerung">
-              <button id="btnPrev" aria-label="Vorheriger Track">⏮</button>
-              <button id="btnPlay" aria-label="Play/Pause">⏯</button>
-              <button id="btnNext" aria-label="Nächster Track">⏭</button>
+        <!-- Slide 3: Wetter -->
+        <section class="dash" id="wxDash">
+            <div class="tiles">
+                <div class="tile" id="wxTile" style="display:none;">
+                    ⛅ <span id="city">—</span> <span id="t">—</span>° — <span id="d">—</span>
+                </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slide 1: System -->
-      <section class="dash active" id="sysDash">
-        <div id="sysCenter">
-          <div class="sysLine">CPU: <span id="cpu">—%</span></div>
-          <div class="sysLine">RAM: <span id="ram">—%</span></div>
-          <div class="sysLine">Temp: <span id="temp">—°C</span></div>
-        </div>
-      </section>
-
-      <!-- Slide 2: Pi-hole -->
-      <section class="dash" id="piDash">
-        <div class="tiles">
-          <div class="tile" id="piTile" style="display:none;">
-            🚫 <span id="blocked">0</span> • 🌐 <span id="dns">0</span> • <span id="ratio">0.0</span>%
-          </div>
-        </div>
-      </section>
-
-      <!-- Slide 3: Wetter -->
-      <section class="dash" id="wxDash">
-        <div class="tiles">
-          <div class="tile" id="wxTile" style="display:none;">
-            ⛅ <span id="city">—</span> <span id="t">—</span>° — <span id="d">—</span>
-          </div>
-        </div>
-      </section>
+        </section>
     </div>
-  </main>
+</main>
 
-  <!-- Dein Modul-Einstieg -->
-  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Dein Modul-Einstieg -->
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

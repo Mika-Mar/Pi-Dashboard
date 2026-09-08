@@ -30,12 +30,29 @@ def index():
 # ---------- System API ----------
 @app.get("/api/system")
 def api_system():
+    disk = psutil.disk_usage("/")
+    uptime_seconds = int(time.time() - psutil.boot_time())
+
+    # Prüft nur, ob grundsätzlich eine Verbindung nach außen möglich ist.
+    try:
+        result = subprocess.run(
+            ["ping", "-c", "1", "-W", "1", "1.1.1.1"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        )
+        internet_online = result.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        internet_online = False
+
     return jsonify({
         "cpu_pct": psutil.cpu_percent(interval=0.15),
         "ram_pct": psutil.virtual_memory().percent,
-        "temp_c": cpu_temp()
+        "temp_c": cpu_temp(),
+        "disk_pct": disk.percent,
+        "uptime_seconds": uptime_seconds,
+        "internet_online": internet_online,
     })
-
 # ---------- Optional APIs (erstmal ausgeschaltet) ----------
 @app.get("/api/pihole")
 def api_pihole():
