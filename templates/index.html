@@ -116,9 +116,26 @@
 
         <!-- Slide 2: Pi-hole -->
         <section class="dash" id="piDash">
-            <div class="tiles">
-                <div class="tile" id="piTile" style="display:none;">
-                    🚫 <span id="blocked">0</span> • 🌐 <span id="dns">0</span> • <span id="ratio">0.0</span>%
+            <div id="piCenter">
+                <div class="sysLine">
+                    Status:
+                    <span id="piholeDot" class="statusDot"></span>
+                    <span id="piholeStatus">—</span>
+                </div>
+
+                <div class="sysLine">
+                    DNS Queries:
+                    <span id="piholeQueries">—</span>
+                </div>
+
+                <div class="sysLine">
+                    Blocked:
+                    <span id="piholeBlocked">—</span>
+                </div>
+
+                <div class="sysLine">
+                    Blocked:
+                    <span id="piholePercent">—</span>
                 </div>
             </div>
         </section>

@@ -2,7 +2,9 @@ import {initSystem} from "./system.js";
 import {initSwipe} from "./gestures.js";
 import {initPlayer} from "./player.js";
 import {initDesktop} from "./desktop.js";
+import {initPihole} from "./pihole.js";
 //hier später noch die anderen
+
 
 document.addEventListener("DOMContentLoaded", () => {
     // DOM-Refs einsammeln (nur ids, kein query-Chaos)
@@ -71,6 +73,14 @@ document.addEventListener("DOMContentLoaded", () => {
     vinylButton?.addEventListener("click", () => setVinylMode(!vinylMode));
 
 
+    const pihole = initPihole({
+        statusEl: el("piholeStatus"),
+        queriesEl: el("piholeQueries"),
+        blockedEl: el("piholeBlocked"),
+        percentEl: el("piholePercent"),
+        pollMs: 6000,
+    });
+
     // System-Kachel (CPU/RAM/Temperatur)
     const system = initSystem({
         cpuEl: el("cpu"),
@@ -120,6 +130,12 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 system.stop();
                 desktop.stop();
+            }
+
+            if (i === 2) {
+                pihole.start();
+            } else {
+                pihole.stop();
             }
         },
     });
