@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         queriesEl: el("piholeQueries"),
         blockedEl: el("piholeBlocked"),
         percentEl: el("piholePercent"),
+        toggleButton: el("piholeToggle"),
         pollMs: 6000,
     });
 

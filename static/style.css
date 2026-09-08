@@ -474,6 +474,58 @@ button, input, select, textarea{ font: inherit; }
   box-shadow: 0 0 0 rgba(239, 68, 68, .5);
 }
 
+/* ---------- Pi-hole Dashboard ---------- */
+
+#piDash {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+#piCenter {
+  width: 100%;
+  text-align: center;
+  color: var(--on-accent);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  gap: clamp(.45rem, 1.6vh, 1rem);
+
+  font-size: clamp(1.8rem, 5vh, 3.429rem);
+  line-height: 1.1;
+}
+
+#piCenter .sysLine {
+  margin: 0;
+}
+
+#piholeToggle {
+  margin-top: clamp(.5rem, 2vh, 1.5rem);
+
+  min-height: var(--control-min);
+  padding: .55rem 1.4rem;
+
+  border: 2px solid currentColor;
+  border-radius: var(--radius);
+
+  background: transparent;
+  color: inherit;
+
+  font: inherit;
+  font-size: .65em;
+
+  cursor: pointer;
+}
+
+#piholeToggle:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 /* ===== Utility ===== */
 .hidden{ display:none !important; }
 .viewport{overflow-y:hidden;}

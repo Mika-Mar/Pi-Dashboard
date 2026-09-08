@@ -17,6 +17,7 @@ ENV_PATH = Path(
 
 load_dotenv(ENV_PATH)
 
+
 # ---------- Helpers ----------
 def cpu_temp():
     # 1) vcgencmd (Pi)
@@ -32,10 +33,12 @@ def cpu_temp():
     except Exception:
         return None
 
+
 # ---------- Pages ----------
 @app.get("/")
 def index():
     return render_template("index.html")
+
 
 # ---------- System API ----------
 @app.get("/api/system")
@@ -64,10 +67,12 @@ def api_system():
         "internet_online": internet_online,
     })
 
+
 PIHOLE_URL = os.getenv("PIHOLE_URL", "http://127.0.0.1")
 PIHOLE_APP_PASSWORD = os.getenv("PIHOLE_APP_PASSWORD")
 
 _pihole_sid = None
+
 
 def get_pihole_sid():
     global _pihole_sid
@@ -86,6 +91,8 @@ def get_pihole_sid():
     _pihole_sid = data["session"]["sid"]
 
     return _pihole_sid
+
+
 @app.get("/api/pihole")
 @app.get("/api/pihole")
 def api_pihole():
@@ -147,12 +154,15 @@ def api_pihole():
             "enabled": False,
             "error": str(e),
         }), 502
+
+
 # ---------- Optional APIs (erstmal ausgeschaltet) ----------
 
 @app.get("/api/weather")
 def api_weather():
     # Später echt anbinden; fürs Testen "disabled"
-    return jsonify({ "enabled": False })
+    return jsonify({"enabled": False})
+
 
 # --- NEU: echte Spotify-Anbindung mit Spotipy ---
 import os, time, math
@@ -186,12 +196,12 @@ def spotify_configuration():
     """Load Spotify settings from the environment (including the local .env)."""
     client_id = os.getenv("SPOTIPY_CLIENT_ID") or os.getenv("SPOTIFY_CLIENT_ID")
     client_secret = (
-        os.getenv("SPOTIPY_CLIENT_SECRET") or os.getenv("SPOTIFY_CLIENT_SECRET")
+            os.getenv("SPOTIPY_CLIENT_SECRET") or os.getenv("SPOTIFY_CLIENT_SECRET")
     )
     redirect_uri = (
-        os.getenv("SPOTIPY_REDIRECT_URI")
-        or os.getenv("SPOTIFY_REDIRECT_URI")
-        or DEFAULT_SPOTIFY_REDIRECT_URI
+            os.getenv("SPOTIPY_REDIRECT_URI")
+            or os.getenv("SPOTIFY_REDIRECT_URI")
+            or DEFAULT_SPOTIFY_REDIRECT_URI
     )
     return client_id, client_secret, redirect_uri
 
@@ -282,6 +292,7 @@ def spotify_setup():
         "<p>The dashboard will load the saved credentials automatically afterwards.</p>"
     ), 503
 
+
 @app.get("/spotify/login")
 def spotify_login():
     oauth = spotify_oauth()
@@ -289,6 +300,7 @@ def spotify_login():
         return redirect(url_for("spotify_setup"))
     auth_url = oauth.get_authorize_url()
     return redirect(auth_url)
+
 
 @app.get("/spotify/callback")
 def spotify_callback():
@@ -310,8 +322,12 @@ def spotify_callback():
     oauth.get_access_token(code, check_cache=False)
     session["spotify_authed"] = True
     return redirect(url_for("index"))
+
+
 # --- Cover-Proxy: damit Canvas-Farbanalyse same-origin ist ---
 ALLOW_COVER_HOSTS = {"i.scdn.co", "seeded.scdn.co"}
+
+
 @app.get("/proxy/cover")
 def proxy_cover():
     url = request.args.get("url", "")
@@ -326,6 +342,7 @@ def proxy_cover():
         return Response(r.content, content_type=ct)
     except requests.RequestException:
         abort(502)
+
 
 # --- API, die exakt zu deinem Frontend passt ---
 
@@ -344,7 +361,8 @@ def api_spotify_current():
     sp = spotify_client()
     if not sp:
         # Frontend kann /spotify/login verlinken, wenn not authed
-        return jsonify({"is_playing": False, "progress_ms": 0, "duration_ms": 0, "track": None, "need_login": True}), 200
+        return jsonify(
+            {"is_playing": False, "progress_ms": 0, "duration_ms": 0, "track": None, "need_login": True}), 200
 
     pb = sp.current_playback()
     if not pb or not pb.get("item"):
@@ -371,6 +389,7 @@ def api_spotify_current():
     }
     return jsonify(payload)
 
+
 @app.post("/api/spotify/toggle")
 def api_spotify_toggle():
     sp = spotify_client()
@@ -386,6 +405,7 @@ def api_spotify_toggle():
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
+
 @app.post("/api/spotify/next")
 def api_spotify_next():
     sp = spotify_client()
@@ -397,6 +417,7 @@ def api_spotify_next():
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
+
 @app.post("/api/spotify/prev")
 def api_spotify_prev():
     sp = spotify_client()
@@ -407,6 +428,7 @@ def api_spotify_prev():
         return jsonify({"ok": True})
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
 
 @app.post("/api/spotify/seek")
 def api_spotify_seek():
@@ -420,28 +442,33 @@ def api_spotify_seek():
         return jsonify({"ok": True})
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
+
 # ---------- Dynamische SVG-Cover (same-origin, CORS-frei für Canvas) ----------
 def hsl_to_rgb(h, s, l):
     # h in [0,1], s,l in [0,1] -> return (r,g,b) [0..255]
     def hue2rgb(p, q, t):
         if t < 0: t += 1
         if t > 1: t -= 1
-        if t < 1/6: return p + (q - p) * 6 * t
-        if t < 1/2: return q
-        if t < 2/3: return p + (q - p) * (2/3 - t) * 6
+        if t < 1 / 6: return p + (q - p) * 6 * t
+        if t < 1 / 2: return q
+        if t < 2 / 3: return p + (q - p) * (2 / 3 - t) * 6
         return p
+
     if s == 0:
         v = int(round(l * 255))
         return v, v, v
     q = l * (1 + s) if l < 0.5 else l + s - l * s
     p = 2 * l - q
-    r = hue2rgb(p, q, h + 1/3)
+    r = hue2rgb(p, q, h + 1 / 3)
     g = hue2rgb(p, q, h)
-    b = hue2rgb(p, q, h - 1/3)
+    b = hue2rgb(p, q, h - 1 / 3)
     return int(round(r * 255)), int(round(g * 255)), int(round(b * 255))
+
 
 def rgb_hex(r, g, b):
     return f"#{r:02x}{g:02x}{b:02x}"
+
 
 @app.get("/covers/<int:n>.svg")
 def cover_svg(n: int):
@@ -463,6 +490,7 @@ def cover_svg(n: int):
   <circle cx="460" cy="520" r="90" fill="rgba(255,255,255,0.08)"/>
 </svg>"""
     return Response(svg, mimetype="image/svg+xml")
+
 
 @app.get("/api/desktop")
 def api_desktop():
@@ -490,7 +518,9 @@ def api_desktop():
         "online": online
     })
 
+
 import socket
+
 
 def send_magic_packet(mac_address: str):
     mac = mac_address.replace(":", "").replace("-", "")
@@ -503,6 +533,7 @@ def send_magic_packet(mac_address: str):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         sock.sendto(data, ("255.255.255.255", 9))
+
 
 @app.post("/api/desktop/wake")
 def api_desktop_wake():
@@ -522,6 +553,60 @@ def api_desktop_wake():
             "ok": False,
             "error": str(e)
         }), 400
+
+
+@app.post("/api/pihole/blocking")
+def api_pihole_blocking():
+    global _pihole_sid
+
+    try:
+        data = request.get_json(silent=True) or {}
+        enabled = data.get("enabled")
+
+        if not isinstance(enabled, bool):
+            return jsonify({
+                "ok": False,
+                "error": "enabled must be boolean"
+            }), 400
+
+        sid = get_pihole_sid()
+
+        r = requests.post(
+            f"{PIHOLE_URL}/api/dns/blocking",
+            headers={"X-FTL-SID": sid},
+            json={
+                "blocking": enabled
+            },
+            timeout=3,
+        )
+
+        # SID abgelaufen
+        if r.status_code == 401:
+            _pihole_sid = None
+            sid = get_pihole_sid()
+
+            r = requests.post(
+                f"{PIHOLE_URL}/api/dns/blocking",
+                headers={"X-FTL-SID": sid},
+                json={
+                    "blocking": enabled
+                },
+                timeout=3,
+            )
+
+        r.raise_for_status()
+
+        return jsonify({
+            "ok": True,
+            "enabled": enabled
+        })
+
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 502
+
 
 # ---------- Dev-Server ----------
 if __name__ == "__main__":
