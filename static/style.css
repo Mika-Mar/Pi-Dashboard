@@ -126,12 +126,24 @@ button, input, select, textarea{ font: inherit; }
 #pager .dot.active{ opacity:1; transform:scale(1.2); }
 
 /* ===== Carousel ===== */
-#dashWrap{
-  touch-action: pan-y;
-  position: relative; /* allow slides to layer above one another */
-  display: flex;
+#dashViewport,
+#dashWrap,
+#dashWrap .dash,
+#coverWrap{
+  /* Include clipped slide/cover containers in the browser's gesture policy. */
+  touch-action: pan-y pinch-zoom;
+}
+#dashViewport{
+  position: relative;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+#dashWrap{
+  position: relative; /* allow slides to layer above one another */
+  display: flex;
+  height: 100%;
   width: 100%;
   transition: transform .4s ease;
   cursor: grab;

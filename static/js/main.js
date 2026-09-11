@@ -122,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const dots = Array.from(document.querySelectorAll("#pager .dot"));
     const carousel = initSwipe({
         wrapEl: el("dashWrap"),
+        viewportEl: el("dashViewport"),
         dots,
         startIndex: 1,
         onChange: (i) => {

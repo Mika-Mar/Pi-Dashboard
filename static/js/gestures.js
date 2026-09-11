@@ -1,7 +1,8 @@
 // gestures.js
 // Swipe carousel with wrap-around navigation for touch, pen, and mouse.
-export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
+export function initSwipe({ wrapEl, viewportEl = wrapEl?.parentElement, dots, onChange, startIndex = 0 }) {
   if (!wrapEl) throw new Error("initSwipe requires wrapEl");
+  if (!viewportEl) throw new Error("initSwipe requires a stationary viewport");
 
   // Collect original slides and create clones for seamless looping
   const origSlides = Array.from(wrapEl.children);
@@ -63,14 +64,16 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
 
   // After sliding onto a clone, jump to the real slide without animation
   wrapEl.addEventListener("transitionend", (event) => {
-    if (event.propertyName !== "transform") return;
+    if (event.target !== wrapEl || event.propertyName !== "transform") return;
     settleTransition();
   });
 
-  // Pointer Events cover touchscreens, pens, and mouse dragging. Vertical
-  // movement remains available for scrolling on short displays.
+  // Use native touch events on touch browsers: WebKit can cancel the pointer
+  // stream when it starts a scroll. Mouse and pen still use Pointer Events.
+  const useTouchEvents = "ontouchstart" in window;
   const interactiveSelector = "button, a, input, select, textarea, [role='slider']";
   let pointerId = null;
+  let touchId = null;
   let startX = 0;
   let startY = 0;
   let lastX = 0;
@@ -78,45 +81,48 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
   let dragAxis = null;
 
   const resetDrag = () => {
+    const capturedId = pointerId;
     pointerId = null;
+    touchId = null;
     dragAxis = null;
     wrapEl.classList.remove("is-dragging");
+    if (capturedId !== null && viewportEl.hasPointerCapture(capturedId)) {
+      viewportEl.releasePointerCapture(capturedId);
+    }
   };
 
-  wrapEl.addEventListener("pointerdown", (event) => {
-    if (!event.isPrimary || transitioning) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (event.target.closest(interactiveSelector)) return;
-
-    pointerId = event.pointerId;
-    startX = lastX = event.clientX;
-    startY = event.clientY;
+  const startDrag = (x, y) => {
+    startX = lastX = x;
+    startY = y;
     startedAt = performance.now();
     dragAxis = null;
-  });
+  };
 
-  wrapEl.addEventListener("pointermove", (event) => {
-    if (event.pointerId !== pointerId) return;
-    const dx = event.clientX - startX;
-    const dy = event.clientY - startY;
+  const moveDrag = (x, y, event) => {
+    const dx = x - startX;
+    const dy = y - startY;
+
+    // Claim horizontal touches from the first move, before Safari starts its
+    // native pan. Keep the distance threshold for actually starting a drag.
+    if (event.cancelable && (dragAxis === "x"
+      || (!dragAxis && Math.abs(dx) > Math.abs(dy)))) {
+      event.preventDefault();
+    }
 
     if (!dragAxis) {
       if (Math.hypot(dx, dy) < 8) return;
       dragAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       if (dragAxis === "y") return;
-      wrapEl.setPointerCapture(event.pointerId);
       wrapEl.classList.add("is-dragging");
     }
     if (dragAxis !== "x") return;
 
-    event.preventDefault();
-    lastX = event.clientX;
+    lastX = x;
     const offset = -idx * wrapEl.clientWidth + dx;
     wrapEl.style.transform = `translate3d(${offset}px, 0, 0)`;
-  }, { passive: false });
+  };
 
-  const finishDrag = (event, cancelled = false) => {
-    if (event.pointerId !== pointerId) return;
+  const finishDrag = (cancelled = false) => {
     const wasHorizontal = dragAxis === "x";
     const dx = lastX - startX;
     const elapsed = Math.max(1, performance.now() - startedAt);
@@ -133,11 +139,66 @@ export function initSwipe({ wrapEl, dots, onChange, startIndex = 0 }) {
     show(idx + (shouldChange ? (dx < 0 ? 1 : -1) : 0));
   };
 
-  wrapEl.addEventListener("pointerup", (event) => finishDrag(event));
-  wrapEl.addEventListener("pointercancel", (event) => finishDrag(event, true));
-  wrapEl.addEventListener("lostpointercapture", (event) => {
-    if (event.pointerId === pointerId) finishDrag(event, true);
+  // Listen on the stationary viewport, not the translated track. On iOS the
+  // track's own hit-test region can be entirely outside the visible carousel.
+  const canStartDrag = (target) => wrapEl.contains(target)
+    && !target.closest(interactiveSelector);
+
+  viewportEl.addEventListener("pointerdown", (event) => {
+    if (useTouchEvents && event.pointerType === "touch") return;
+    if (!event.isPrimary || transitioning || pointerId !== null || touchId !== null) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!canStartDrag(event.target)) return;
+
+    pointerId = event.pointerId;
+    startDrag(event.clientX, event.clientY);
+    viewportEl.setPointerCapture(pointerId);
   });
+  viewportEl.addEventListener("pointermove", (event) => {
+    if (event.pointerId === pointerId) moveDrag(event.clientX, event.clientY, event);
+  }, { passive: false });
+  viewportEl.addEventListener("pointerup", (event) => {
+    if (event.pointerId === pointerId) finishDrag();
+  });
+  viewportEl.addEventListener("pointercancel", (event) => {
+    if (event.pointerId === pointerId) finishDrag(true);
+  });
+  viewportEl.addEventListener("lostpointercapture", (event) => {
+    if (event.pointerId === pointerId) finishDrag(true);
+  });
+
+  if (useTouchEvents) {
+    viewportEl.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1) {
+        if (touchId !== null) finishDrag(true);
+        return;
+      }
+      if (transitioning || pointerId !== null || touchId !== null) return;
+      if (!canStartDrag(event.target)) return;
+      const touch = event.changedTouches[0];
+      touchId = touch.identifier;
+      startDrag(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    viewportEl.addEventListener("touchmove", (event) => {
+      if (touchId === null) return;
+      if (event.touches.length !== 1) {
+        finishDrag(true);
+        return;
+      }
+      const touch = Array.from(event.changedTouches).find((t) => t.identifier === touchId);
+      if (touch) moveDrag(touch.clientX, touch.clientY, event);
+    }, { passive: false });
+
+    const endTouch = (event, cancelled = false) => {
+      const touch = Array.from(event.changedTouches).find((t) => t.identifier === touchId);
+      if (!touch) return;
+      if (!cancelled && dragAxis === "x") lastX = touch.clientX;
+      finishDrag(cancelled);
+    };
+    viewportEl.addEventListener("touchend", (event) => endTouch(event));
+    viewportEl.addEventListener("touchcancel", (event) => endTouch(event, true));
+  }
   wrapEl.addEventListener("dragstart", (event) => event.preventDefault());
 
   const bindActivate = (el, fn) => {
