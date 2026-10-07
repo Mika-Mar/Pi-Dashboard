@@ -114,6 +114,14 @@ document.addEventListener("DOMContentLoaded", () => {
         btnNextEl: el("btnNext"),
         eqTopEl: el("eq-top"),
         eqTextEl: el("eq-text"),
+        deviceSelectEl: el("spotifyDevice"),
+        deviceStatusEl: el("spotifyDeviceStatus"),
+        nowPlayingEl: el("nowPlayingView"),
+        libraryEl: el("spotifyLibraryView"),
+        libraryOpenEl: el("btnSpotifyLibrary"),
+        libraryBackEl: el("btnSpotifyNowPlaying"),
+        libraryItemsEl: el("spotifyLibraryItems"),
+        libraryStatusEl: el("spotifyLibraryStatus"),
         pollMs: 10000,
     });
     //Debug: window.Player = player;

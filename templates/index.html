@@ -61,32 +61,59 @@
         <!-- Slide 0: Now Playing -->
         <section class="dash" id="dash-now">
             <div id="player">
-                <div id="coverWrap">
-                    <img id="cover" crossOrigin="anonymous" alt="Albumcover"/>
+                <div id="nowPlayingView">
+                    <button id="btnSpotifyLibrary" type="button" aria-controls="spotifyLibraryView">
+                        Auswahl
+                    </button>
+                    <div id="coverWrap">
+                        <img id="cover" crossOrigin="anonymous" alt="Albumcover"/>
+                    </div>
+
+                    <div id="meta">
+                        <div id="albumText" class="muted"></div>
+                        <div id="eq-text" class="eq">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div id="progress" role="slider" aria-label="Track-Fortschritt" aria-valuemin="0"
+                             aria-valuemax="100">
+                            <div id="progressFill" class="fill"></div>
+                        </div>
+                        <div id="times">
+                            <span id="timeNow">0:00</span>
+                            <span id="timeTotal">0:00</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="meta">
-                    <div id="albumText" class="muted"></div>
-                    <div id="eq-text" class="eq">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                <div id="spotifyLibraryView" hidden>
+                    <div id="spotifyLibraryHeader">
+                        <div>
+                            <h2>Deine Musik</h2>
+                            <div class="muted">Zufällig abspielen</div>
+                        </div>
+                        <button id="btnSpotifyNowPlaying" type="button" aria-controls="nowPlayingView">
+                            Zurück
+                        </button>
                     </div>
-                    <div id="progress" role="slider" aria-label="Track-Fortschritt" aria-valuemin="0"
-                         aria-valuemax="100">
-                        <div id="progressFill" class="fill"></div>
-                    </div>
-                    <div id="times">
-                        <span id="timeNow">0:00</span>
-                        <span id="timeTotal">0:00</span>
-                    </div>
+                    <div id="spotifyLibraryItems" aria-live="polite"></div>
+                    <div id="spotifyLibraryStatus" class="muted" role="status" aria-live="polite"></div>
+                </div>
 
+                <div id="playbackRow">
                     <div id="controls" role="group" aria-label="Player-Steuerung">
                         <button id="btnPrev" aria-label="Vorheriger Track">⏮</button>
                         <button id="btnPlay" aria-label="Play/Pause">⏯</button>
                         <button id="btnNext" aria-label="Nächster Track">⏭</button>
                     </div>
+                    <div id="spotifyDevicePicker">
+                        <select id="spotifyDevice" aria-describedby="spotifyDeviceStatus" disabled>
+                            <option value="">Geräte werden geladen …</option>
+                        </select>
+                    </div>
                 </div>
+                <div id="spotifyDeviceStatus" class="muted" role="status" aria-live="polite"></div>
             </div>
         </section>
 

@@ -25,6 +25,7 @@
 
 /* ===== Base ===== */
 *{ box-sizing: border-box; }
+[hidden]{ display:none !important; }
 html,body{ height:100%; }
 body{
   margin:0; color:var(--fg); background:var(--bg);
@@ -233,14 +234,116 @@ button, input, select, textarea{ font: inherit; }
 }
 
 #player{
+  position:relative;
   display:flex; flex-direction: column; gap: .714rem; padding: .286rem 0; align-items:center;
+}
+#nowPlayingView{
+  display:flex; flex-direction:column; gap:.714rem; align-items:center;
+}
+#btnSpotifyLibrary,
+#btnSpotifyNowPlaying{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:999rem;
+  background:var(--card);
+  color:var(--fg);
+  padding:.4rem .8rem;
+  cursor:pointer;
+}
+#btnSpotifyLibrary{
+  position:absolute;
+  z-index:4;
+  top:.286rem;
+  right:1rem;
+}
+#btnSpotifyLibrary:hover,
+#btnSpotifyNowPlaying:hover{ background:rgba(255,255,255,.12); }
+
+#spotifyLibraryView{
+  width:min(94vw, 56rem);
+  min-height:min(58dvh, 25rem);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:.714rem;
+}
+#spotifyLibraryHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+}
+#spotifyLibraryHeader h2{
+  margin:0;
+  font-size:1.6rem;
+  line-height:1;
+}
+#spotifyLibraryItems{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:.714rem;
+}
+.spotifyLibraryItem{
+  min-width:0;
+  min-height:clamp(68px, 6.4rem, 112px);
+  display:flex;
+  align-items:center;
+  gap:.714rem;
+  padding:.5rem;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:.714rem;
+  background:var(--card);
+  color:var(--fg);
+  text-align:left;
+  cursor:pointer;
+  transition:transform .12s ease, background .2s ease;
+}
+.spotifyLibraryItem:hover{ transform:translateY(-.071rem); background:rgba(255,255,255,.12); }
+.spotifyLibraryItem:disabled{ opacity:.55; cursor:default; transform:none; }
+.spotifyLibraryArt{
+  flex:0 0 clamp(54px, 5rem, 88px);
+  width:clamp(54px, 5rem, 88px);
+  aspect-ratio:1;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  border-radius:.5rem;
+  background:rgba(255,255,255,.08);
+}
+.spotifyLibraryArt img{ width:100%; height:100%; object-fit:cover; }
+.spotifyLibraryArt--liked{
+  color:#fff;
+  font-size:2.2rem;
+  background:linear-gradient(135deg, #6d28d9, var(--accent));
+}
+.spotifyLibraryText{ display:grid; min-width:0; gap:.143rem; }
+.spotifyLibraryTitle,
+.spotifyLibrarySubtitle{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.spotifyLibraryTitle{ font-weight:700; }
+.spotifyLibrarySubtitle{ color:var(--muted); font-size:.88rem; }
+#spotifyLibraryStatus{ min-height:1.35em; text-align:center; }
+#spotifyLibraryStatus a{ color:var(--fg); }
+@media (max-width: 600px){
+  #spotifyLibraryItems{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .spotifyLibraryItem{ display:grid; justify-items:center; text-align:center; }
+  .spotifyLibraryText{ width:100%; }
+}
+@media (max-height: 540px){
+  #spotifyLibraryView{ min-height:0; }
+  .spotifyLibraryItem{ min-height:60px; }
+  .spotifyLibraryArt{ flex-basis:52px; width:52px; }
 }
 
 #coverWrap{
   /* 320px bei 1024×600; skaliert zwischen 180px und 480px */
   position:relative;
   width: min(72vw, clamp(180px, 22.857rem, 480px));
-  width: min(72vw, 53.333dvh, clamp(180px, 22.857rem, 480px));
+  /* Reserve vertical room for controls, the Connect picker, and its status. */
+  width: min(72vw, 53.333dvh, clamp(180px, 22.857rem, 480px), max(100px, calc(100dvh - 22rem)));
   aspect-ratio: 1/1;
 }
 #cover{
@@ -316,6 +419,7 @@ button, input, select, textarea{ font: inherit; }
   grid-template-rows: auto auto auto auto;
   gap: .571rem;
 }
+#albumText:empty{ display:none; }
 #progress{
   position:relative; width:100%; height:.571rem;
   background:rgba(255,255,255,.09);
@@ -333,6 +437,25 @@ button, input, select, textarea{ font: inherit; }
   color:var(--muted);
 }
 
+#playbackRow{
+  display:flex; align-items:center; justify-content:center; gap:1rem; align-content: center;
+}
+#spotifyDevicePicker{
+  display:grid; gap:.143rem; flex:1; min-width:0; max-width:20rem;
+}
+#spotifyDevicePicker label{ color:var(--muted); font-size:.9rem; }
+#spotifyDevice{
+  width:100%; min-width:0; min-height:var(--control-min);
+  padding:.429rem .571rem; border:1px solid rgba(255,255,255,.15);
+  border-radius:.571rem; color:var(--fg); background:var(--card);
+  text-overflow:ellipsis; cursor:pointer; color-scheme:dark;
+}
+#spotifyDevice option{ color:var(--fg); background:var(--bg); }
+#spotifyDevice:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+#spotifyDevice:disabled, #controls button:disabled{ opacity:.55; cursor:default; }
+#spotifyDeviceStatus{ font-size:.9rem; text-align:center; }
+#spotifyDeviceStatus:empty{ display:none; }
+#progress[aria-disabled="true"]{ opacity:.55; }
 #controls{ display:flex; gap:.714rem; align-items:center; justify-content:center; }
 #controls button{
   min-width: var(--control-min);
@@ -345,6 +468,17 @@ button, input, select, textarea{ font: inherit; }
 #controls button:hover{ transform: translateY(-.071rem); background: rgba(255,255,255,.12); }
 #btnPlay{ background: var(--accent); color: var(--on-accent); }
 #btnPlay.is-playing{ filter: saturate(.9) brightness(.95); }
+
+@media (max-width: 380px){
+  #playbackRow{ gap:.5rem; }
+  #controls{ gap:.35rem; }
+  #controls button{ padding:.5rem; }
+}
+
+@media (max-height: 540px){
+  /* Touch controls keep their minimum height on short displays. */
+  #coverWrap{ width:min(72vw, max(100px, calc(100dvh - 24rem))); }
+}
 
 /* ===== Tiles (System/Pi-hole/Wetter) ===== */
 .tiles{ display:grid; grid-template-columns: 1fr; gap:.6rem; }

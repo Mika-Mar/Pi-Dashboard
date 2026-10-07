@@ -2,7 +2,11 @@
 
 export async function jget(url, init={}){
     const r = await fetch(url, { headers: {"Accept":"application/json"}, ...init});
-    if(!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
+    if(!r.ok) {
+        const error = new Error(`HTTP ${r.status} ${url}`);
+        error.data = await r.json().catch(() => ({}));
+        throw error;
+    }
     return await r.json();
 }
 

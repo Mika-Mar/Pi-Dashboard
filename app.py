@@ -1,21 +1,44 @@
 from __future__ import annotations
 
-from flask import Flask, render_template, jsonify, request, Response
+import math
+import os
+import random
+import re
+import secrets
+import socket
+import subprocess
+import time
 from pathlib import Path
 from typing import Optional
-import subprocess, psutil, time, math, os
+from urllib.parse import quote_plus, urlparse
+
+import click
+import psutil
+import requests
+import spotipy
+from dotenv import load_dotenv, set_key
+from flask import (
+    Flask,
+    Response,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from spotipy.exceptions import SpotifyOauthError
+from spotipy.oauth2 import SpotifyOAuth
 
 app = Flask(__name__)
-
-from dotenv import load_dotenv
-from pathlib import Path
-import os
 
 ENV_PATH = Path(
     os.getenv("PI_DASHBOARD_ENV_FILE", Path(__file__).with_name(".env"))
 ).expanduser()
 
 load_dotenv(ENV_PATH)
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 
 # ---------- Helpers ----------
@@ -94,9 +117,11 @@ def get_pihole_sid():
 
 
 @app.get("/api/pihole")
-@app.get("/api/pihole")
 def api_pihole():
     global _pihole_sid
+
+    if not PIHOLE_APP_PASSWORD:
+        return jsonify({"configured": False, "enabled": False})
 
     try:
         sid = get_pihole_sid()
@@ -164,25 +189,11 @@ def api_weather():
     return jsonify({"enabled": False})
 
 
-# --- NEU: echte Spotify-Anbindung mit Spotipy ---
-import os, time, math
-from urllib.parse import urlparse, quote_plus
-import requests
-import click
-from dotenv import load_dotenv
-from dotenv import set_key
-import spotipy
-from spotipy.exceptions import SpotifyOauthError
-from spotipy.oauth2 import SpotifyOAuth
-from flask import session, redirect, url_for, request, jsonify, Response, abort
-
-ENV_PATH = Path(
-    os.getenv("PI_DASHBOARD_ENV_FILE", Path(__file__).with_name(".env"))
-).expanduser()
-load_dotenv(ENV_PATH)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-dev-dev")
-
-SPOTIFY_SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+# --- Echte Spotify-Anbindung mit Spotipy ---
+SPOTIFY_SCOPE = (
+    "user-read-playback-state user-modify-playback-state "
+    "user-read-currently-playing user-library-read user-read-recently-played"
+)
 
 # Cache-Datei => nach erstem Login bleibt der Refresh-Token erhalten
 CACHE_PATH = os.getenv("SPOTIPY_CACHE_PATH", ".cache-pi-dashboard")
@@ -298,15 +309,26 @@ def spotify_login():
     oauth = spotify_oauth()
     if oauth is None:
         return redirect(url_for("spotify_setup"))
-    auth_url = oauth.get_authorize_url()
+    state = secrets.token_urlsafe(32)
+    session["spotify_oauth_state"] = state
+    auth_url = oauth.get_authorize_url(state=state)
     return redirect(auth_url)
 
 
 @app.get("/spotify/callback")
 def spotify_callback():
+    expected_state = session.pop("spotify_oauth_state", None)
+    received_state = request.args.get("state")
+    if (
+        not expected_state
+        or not received_state
+        or not secrets.compare_digest(expected_state, received_state)
+    ):
+        return Response("Invalid Spotify login state.", status=400, mimetype="text/plain")
+
     err = request.args.get("error")
     if err:
-        return f"Spotify error: {err}", 400
+        return Response(f"Spotify error: {err}", status=400, mimetype="text/plain")
 
     code = request.args.get("code")
     if not code:
@@ -326,6 +348,7 @@ def spotify_callback():
 
 # --- Cover-Proxy: damit Canvas-Farbanalyse same-origin ist ---
 ALLOW_COVER_HOSTS = {"i.scdn.co", "seeded.scdn.co"}
+MAX_COVER_BYTES = 5 * 1024 * 1024
 
 
 @app.get("/proxy/cover")
@@ -333,115 +356,424 @@ def proxy_cover():
     url = request.args.get("url", "")
     if not url:
         abort(400)
-    host = urlparse(url).netloc.lower()
-    if host not in ALLOW_COVER_HOSTS:
-        abort(400)
     try:
-        r = requests.get(url, timeout=5)
-        ct = r.headers.get("Content-Type", "image/jpeg")
-        return Response(r.content, content_type=ct)
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        port = parsed.port
+    except ValueError:
+        abort(400)
+    if parsed.scheme != "https" or host not in ALLOW_COVER_HOSTS or port not in (None, 443):
+        abort(400)
+
+    upstream = None
+    try:
+        upstream = requests.get(
+            url,
+            timeout=5,
+            allow_redirects=False,
+            stream=True,
+        )
+        if 300 <= upstream.status_code < 400:
+            abort(502)
+        upstream.raise_for_status()
+
+        content_type = upstream.headers.get("Content-Type", "").split(";", 1)[0].lower()
+        if not content_type.startswith("image/"):
+            abort(502)
+
+        content_length = upstream.headers.get("Content-Length")
+        if content_length:
+            try:
+                if int(content_length) > MAX_COVER_BYTES:
+                    abort(502)
+            except ValueError:
+                abort(502)
+
+        chunks = []
+        size = 0
+        for chunk in upstream.iter_content(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            size += len(chunk)
+            if size > MAX_COVER_BYTES:
+                abort(502)
+            chunks.append(chunk)
+
+        response = Response(b"".join(chunks), content_type=content_type)
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
     except requests.RequestException:
         abort(502)
+    finally:
+        if upstream is not None:
+            upstream.close()
 
 
 # --- API, die exakt zu deinem Frontend passt ---
 
-@app.get("/api/spotify/current")
-def api_spotify_current():
-    if spotify_oauth() is None:
-        return jsonify({
-            "is_playing": False,
-            "progress_ms": 0,
-            "duration_ms": 0,
-            "track": None,
-            "need_login": True,
+def spotify_device_payload(device):
+    if not device:
+        return None
+    fields = ("id", "name", "type", "is_active", "volume_percent", "is_restricted")
+    return {field: device.get(field) for field in fields}
+
+
+def spotify_cover_url(images):
+    cover_src = images[0].get("url") if images else None
+    return f"/proxy/cover?url={quote_plus(cover_src)}" if cover_src else None
+
+
+def spotify_album_payload(album):
+    return {
+        "id": album.get("id"),
+        "name": album.get("name") or "Unbekanntes Album",
+        "artists": [artist.get("name") for artist in album.get("artists", [])
+                    if artist.get("name")],
+        "cover_url": spotify_cover_url(album.get("images") or []),
+    }
+
+
+def spotify_active_device(sp):
+    devices = (sp.devices() or {}).get("devices") or []
+    return next((device for device in devices
+                 if device.get("is_active") and device.get("id")
+                 and not device.get("is_restricted")), None)
+
+
+def spotify_track_uris(fetch_page, maximum=100):
+    """Collect up to Spotify's 100-URI playback limit."""
+    uris = []
+    offset = 0
+    while len(uris) < maximum:
+        page = fetch_page(min(50, maximum - len(uris)), offset) or {}
+        items = page.get("items") or []
+        for entry in items:
+            track = (entry or {}).get("track") if "track" in (entry or {}) else entry
+            if not track or track.get("is_local") or track.get("is_playable") is False:
+                continue
+            if track.get("uri"):
+                uris.append(track["uri"])
+                if len(uris) == maximum:
+                    break
+        offset += len(items)
+        if not items or offset >= int(page.get("total") or offset) or not page.get("next"):
+            break
+    return uris
+
+
+def confirm_spotify_transfer(sp, device_id, was_playing):
+    """Wait for activation, then resume only on the confirmed target if needed."""
+    confirmed_device = None
+    resumed = False
+    for delay in (0, 0.5, 0.75, 1, 1, 1.5, 2, 2):
+        if delay:
+            time.sleep(delay)
+        playback = sp.current_playback() or {}
+        device = playback.get("device") or {}
+        # Idle sessions may have no playback object even after activation.
+        if not device.get("id"):
+            device = next((d for d in ((sp.devices() or {}).get("devices") or [])
+                           if d.get("id") == device_id and d.get("is_active")), {})
+        if device.get("id") != device_id or not device.get("is_active"):
+            continue
+        confirmed_device = spotify_device_payload(device)
+        playing = bool(playback.get("is_playing"))
+        if not was_playing or playing:
+            return {"ok": True, "device": confirmed_device, "is_playing": playing}, 200
+        if not resumed:
+            # Resume the transferred context without replacing the queue/position.
+            try:
+                sp.start_playback(device_id=device_id)
+            except (spotipy.SpotifyException, requests.RequestException):
+                return {"ok": False, "error": "playback_resume_failed",
+                        "device": confirmed_device}, 502
+            resumed = True
+    return {
+        "ok": False,
+        "error": "playback_resume_timeout" if confirmed_device else "device_transfer_timeout",
+        "device": confirmed_device,
+    }, 504
+
+
+def spotify_login_required_payload(configured=True):
+    payload = {
+        "is_playing": False,
+        "progress_ms": 0,
+        "duration_ms": 0,
+        "track": None,
+        "need_login": True,
+    }
+    if not configured:
+        payload.update({
             "spotify_configured": False,
             "setup_url": url_for("spotify_setup"),
-        }), 200
-    sp = spotify_client()
-    if not sp:
-        # Frontend kann /spotify/login verlinken, wenn not authed
-        return jsonify(
-            {"is_playing": False, "progress_ms": 0, "duration_ms": 0, "track": None, "need_login": True}), 200
+        })
+    return payload
 
-    pb = sp.current_playback()
-    if not pb or not pb.get("item"):
-        return jsonify({"is_playing": False, "progress_ms": 0, "duration_ms": 0, "track": None}), 200
 
-    item = pb["item"]
-    images = item.get("album", {}).get("images", [])
-    cover_src = images[0]["url"] if images else None
-    # über Proxy ausliefern, damit Canvas nicht tainted ist
-    cover_url = f"/proxy/cover?url={quote_plus(cover_src)}" if cover_src else None
+@app.get("/api/spotify/current")
+def api_spotify_current():
+    try:
+        if spotify_oauth() is None:
+            return jsonify(spotify_login_required_payload(configured=False)), 200
 
-    artists = [a["name"] for a in item.get("artists", [])]
-    payload = {
-        "is_playing": bool(pb.get("is_playing")),
-        "progress_ms": int(pb.get("progress_ms") or 0),
-        "duration_ms": int(item.get("duration_ms") or 0),
-        "track": {
-            "id": item.get("id") or "",
-            "name": item.get("name") or "—",
-            "artists": artists,
-            "album": (item.get("album") or {}).get("name"),
-            "cover_url": cover_url,
-        },
-    }
-    return jsonify(payload)
+        sp = spotify_client()
+        if not sp:
+            return jsonify(spotify_login_required_payload()), 200
+
+        pb = sp.current_playback()
+        if not pb or not pb.get("item"):
+            return jsonify({
+                "is_playing": False,
+                "progress_ms": 0,
+                "duration_ms": 0,
+                "track": None,
+                "device": spotify_device_payload((pb or {}).get("device")),
+            }), 200
+
+        item = pb["item"]
+        images = item.get("album", {}).get("images", [])
+        cover_url = spotify_cover_url(images)
+        artists = [artist["name"] for artist in item.get("artists", [])]
+        return jsonify({
+            "device": spotify_device_payload(pb.get("device")),
+            "is_playing": bool(pb.get("is_playing")),
+            "progress_ms": int(pb.get("progress_ms") or 0),
+            "duration_ms": int(item.get("duration_ms") or 0),
+            "track": {
+                "id": item.get("id") or "",
+                "name": item.get("name") or "—",
+                "artists": artists,
+                "album": (item.get("album") or {}).get("name"),
+                "cover_url": cover_url,
+            },
+        })
+    except SpotifyOauthError:
+        return jsonify(spotify_login_required_payload()), 200
+    except spotipy.SpotifyException as error:
+        if error.http_status == 401:
+            return jsonify(spotify_login_required_payload()), 200
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
+
+
+@app.get("/api/spotify/devices")
+def api_spotify_devices():
+    try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
+        devices = (sp.devices() or {}).get("devices") or []
+        return jsonify({"devices": [
+            spotify_device_payload(device)
+            for device in devices
+        ]})
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
+    except spotipy.SpotifyException as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
+
+
+@app.get("/api/spotify/library")
+def api_spotify_library():
+    try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
+
+        saved = sp.current_user_saved_tracks(limit=1, offset=0) or {}
+        recent = sp.current_user_recently_played(limit=50) or {}
+        albums = []
+        seen_album_ids = set()
+        for entry in recent.get("items") or []:
+            album = ((entry or {}).get("track") or {}).get("album") or {}
+            album_id = album.get("id")
+            if not album_id or album_id in seen_album_ids:
+                continue
+            seen_album_ids.add(album_id)
+            albums.append(spotify_album_payload(album))
+            if len(albums) == 5:
+                break
+
+        return jsonify({
+            "favorites": {
+                "type": "liked",
+                "name": "Lieblingssongs",
+                "track_count": int(saved.get("total") or 0),
+            },
+            "albums": albums,
+        })
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
+    except spotipy.SpotifyException as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
+
+
+@app.post("/api/spotify/library/play")
+def api_spotify_library_play():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid_request"}), 400
+    selection_type = data.get("type")
+    album_id = str(data.get("id") or "").strip()
+    if selection_type not in {"liked", "album"}:
+        return jsonify({"ok": False, "error": "invalid_selection"}), 400
+    if selection_type == "album" and not re.fullmatch(r"[A-Za-z0-9]{1,64}", album_id):
+        return jsonify({"ok": False, "error": "invalid_album_id"}), 400
+
+    try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
+        device = spotify_active_device(sp)
+        if not device:
+            return jsonify({"ok": False, "error": "no_active_device"}), 409
+
+        if selection_type == "liked":
+            uris = spotify_track_uris(
+                lambda limit, offset: sp.current_user_saved_tracks(
+                    limit=limit, offset=offset))
+        else:
+            uris = spotify_track_uris(
+                lambda limit, offset: sp.album_tracks(
+                    album_id, limit=limit, offset=offset))
+        if not uris:
+            return jsonify({"ok": False, "error": "empty_selection"}), 409
+
+        random.SystemRandom().shuffle(uris)
+        sp.start_playback(device_id=device["id"], uris=uris)
+        return jsonify({
+            "ok": True,
+            "device": spotify_device_payload(device),
+            "track_count": len(uris),
+        })
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
+    except spotipy.SpotifyException as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
+
+
+@app.post("/api/spotify/device", defaults={"device_id": ""}, strict_slashes=False)
+@app.post("/api/spotify/device/<device_id>")
+def api_spotify_device(device_id):
+    device_id = device_id.strip()
+    if not device_id:
+        return jsonify({"ok": False, "error": "device_id_required"}), 400
+    try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
+        # Recheck availability/restrictions: the picker may have stale data.
+        devices = (sp.devices() or {}).get("devices") or []
+        device = next((d for d in devices if d.get("id") == device_id), None)
+        if device is None:
+            return jsonify({"ok": False, "error": "device_unavailable"}), 404
+        if device.get("is_restricted"):
+            return jsonify({"ok": False, "error": "device_restricted"}), 400
+        # Explicitly continue a running song on the target. A paused/idle
+        # session must not start playing just because its device changes.
+        playback = sp.current_playback()
+        was_playing = bool(playback and playback.get("is_playing"))
+        sp.transfer_playback(device_id, force_play=was_playing)
+        result, status = confirm_spotify_transfer(sp, device_id, was_playing)
+        return jsonify(result), status
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
+    except spotipy.SpotifyException as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
 
 
 @app.post("/api/spotify/toggle")
 def api_spotify_toggle():
-    sp = spotify_client()
-    if not sp:
-        return jsonify({"ok": False, "error": "not_authed"}), 401
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict) or ("is_playing" in data and not isinstance(data["is_playing"], bool)):
+        return jsonify({"ok": False, "error": "is_playing must be boolean"}), 400
     try:
-        pb = sp.current_playback()
-        if pb and pb.get("is_playing"):
-            sp.pause_playback()
-        else:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
+        # An explicit target avoids toggling against a stale Spotify snapshot.
+        playing = data.get("is_playing")
+        if playing is None:
+            pb = sp.current_playback()
+            playing = not (pb and pb.get("is_playing"))
+        if playing:
             sp.start_playback()
-        return jsonify({"ok": True})
+        else:
+            sp.pause_playback()
+        return jsonify({"ok": True, "is_playing": bool(playing)})
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
 
 
 @app.post("/api/spotify/next")
 def api_spotify_next():
-    sp = spotify_client()
-    if not sp:
-        return jsonify({"ok": False, "error": "not_authed"}), 401
     try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
         sp.next_track()
         return jsonify({"ok": True})
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
 
 
 @app.post("/api/spotify/prev")
 def api_spotify_prev():
-    sp = spotify_client()
-    if not sp:
-        return jsonify({"ok": False, "error": "not_authed"}), 401
     try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
         sp.previous_track()
         return jsonify({"ok": True})
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
 
 
 @app.post("/api/spotify/seek")
 def api_spotify_seek():
-    sp = spotify_client()
-    if not sp:
-        return jsonify({"ok": False, "error": "not_authed"}), 401
     data = request.get_json(silent=True) or {}
-    pos = int(max(0, data.get("position_ms", 0)))
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid_request"}), 400
+    position = data.get("position_ms")
+    if isinstance(position, bool) or not isinstance(position, (int, float)):
+        return jsonify({"ok": False, "error": "position_ms must be a number"}), 400
+    if not math.isfinite(position):
+        return jsonify({"ok": False, "error": "position_ms must be finite"}), 400
+    pos = int(max(0, position))
     try:
+        sp = spotify_client()
+        if not sp:
+            return jsonify({"ok": False, "error": "not_authed"}), 401
         sp.seek_track(pos)
         return jsonify({"ok": True})
+    except SpotifyOauthError:
+        return jsonify({"ok": False, "error": "not_authed"}), 401
     except spotipy.SpotifyException as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+    except requests.RequestException:
+        return jsonify({"ok": False, "error": "spotify_unavailable"}), 502
 
 
 # ---------- Dynamische SVG-Cover (same-origin, CORS-frei für Canvas) ----------
@@ -518,10 +850,6 @@ def api_desktop():
         "online": online
     })
 
-
-import socket
-
-
 def send_magic_packet(mac_address: str):
     mac = mac_address.replace(":", "").replace("-", "")
 
@@ -559,8 +887,19 @@ def api_desktop_wake():
 def api_pihole_blocking():
     global _pihole_sid
 
+    if not PIHOLE_APP_PASSWORD:
+        return jsonify({
+            "ok": False,
+            "error": "PIHOLE_APP_PASSWORD not configured",
+        }), 503
+
     try:
         data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify({
+                "ok": False,
+                "error": "invalid request",
+            }), 400
         enabled = data.get("enabled")
 
         if not isinstance(enabled, bool):
